@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+
+@theme {
+  /* Marca. brand-600 es el rojo oficial #F23005; brand-800 existe porque el
+     texto blanco sobre #F23005 solo alcanza 4.04:1 y no pasa AA en tamano
+     normal, asi que los botones usan el tono fuerte y el 600 queda para
+     acentos, bordes, badges y titulos grandes. */
+  --color-brand-50: #fff1ed;
+  --color-brand-100: #ffe0d6;
+  --color-brand-200: #ffc0ac;
+  --color-brand-300: #ff9575;
+  --color-brand-400: #fb5f34;
+  --color-brand-500: #f23005;
+  --color-brand-600: #f23005;
+  --color-brand-700: #c62603;
+  --color-brand-800: #a32203;
+  --color-brand-900: #85200a;
+
+  --color-ink-50: #f6f6f6;
+  --color-ink-100: #e7e7e7;
+  --color-ink-200: #d1d1d1;
+  --color-ink-300: #b0b0b0;
+  --color-ink-400: #888888;
+  --color-ink-500: #6d6d6d;
+  --color-ink-600: #5d5d5d;
+  --color-ink-700: #4f4f4f;
+  --color-ink-800: #454545;
+  --color-ink-900: #262626;
+  --color-ink-950: #1a1a1a;
+
+  --color-amber-brand: #f2a007;
+  --color-amber-brand-dark: #a86d00;
+  --color-sky-brand: #cde1f4;
+  --color-sky-brand-dark: #1e5a8a;
+
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+
+  --radius-card: 0.875rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Lenis maneja el scroll; sin esto el navegador pelea con la animacion. */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-white font-sans text-ink-900 antialiased;
+  }
+
+  /* Foco visible en todo elemento interactivo, requisito de accesibilidad. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-brand-700 rounded-sm outline-2 outline-offset-2;
+  }
+
+  /* Los targets tactiles en movil no bajan de 44px. */
+  @media (pointer: coarse) {
+    :where(button, a[href], [role='button']) {
+      min-height: 44px;
+    }
+  }
+}
+
+@keyframes cart-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  55% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Carrusel Nosotros: la pista va duplicada al 200%; -50% vuelve al inicio
+   sin salto. Solo se aplica cuando hay overflow real. */
+@keyframes about-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@layer utilities {
+  .cart-pop {
+    animation: cart-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .page-enter {
+    animation: page-enter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .about-marquee {
+    animation: about-marquee linear infinite;
+  }
+
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Oculta visualmente pero sigue disponible para lectores de pantalla. */
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    @apply sr-only;
+  }
+
+  /* Campos del panel admin. Son muchos formularios y repetir la cadena de
+     clases en cada input hace el codigo ilegible. */
+  .admin-input {
+    @apply border-ink-200 text-ink-900 placeholder:text-ink-400 focus:border-brand-600 w-full rounded-lg border bg-white px-3 py-2.5 text-[0.9375rem] outline-none;
+  }
+
+  .admin-input-sm {
+    @apply border-ink-200 text-ink-900 focus:border-brand-600 w-full rounded-lg border bg-white px-2.5 py-2 text-sm outline-none;
+  }
+}
+
+/* Si el usuario pide menos movimiento, se apaga todo: la velocidad y la
+   comodidad ganan siempre sobre la animacion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

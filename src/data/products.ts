@@ -1,0 +1,302 @@
+import { supabase } from '@/lib/supabase'
+import {
+  aggregateAvailability,
+  pickPrimaryImage,
+  priceRange,
+  toVariant,
+} from '@/lib/domain'
+import type {
+  Availability,
+  Paginated,
+  ProductCard,
+  ProductDetail,
+  ProductImage,
+} from '@/lib/domain'
+
+export const PAGE_SIZE = 24
+
+/**
+ * Columnas de la tarjeta. Se piden las variantes solo con lo necesario para
+ * calcular "Desde $X" y la disponibilidad; nunca se traen las ~2.900 filas.
+ */
+const CARD_SELECT = `
+  id,
+  origin_id,
+  name,
+  is_offer,
+  is_bestseller,
+  category:categories!products_category_id_fkey ( id, name, slug ),
+  product_variants ( id, price, availability ),
+  product_images ( id, url, is_primary, sort_order, variant_id )
+` as const
+
+type CardRow = {
+  id: string
+  origin_id: number | null
+  name: string
+  is_offer: boolean
+  is_bestseller: boolean
+  category: { id: string; name: string; slug: string } | null
+  product_variants: { id: string; price: number; availability: string }[]
+  product_images: {
+    id: string
+    url: string
+    is_primary: boolean
+    sort_order: number
+    variant_id: string | null
+  }[]
+}
+
+function toCard(row: CardRow): ProductCard {
+  const variants = row.product_variants.map((variant) => ({
+    price: Number(variant.price ?? 0),
+    availability: normalizeAvailability(variant.availability),
+  }))
+  const { from, to } = priceRange(variants)
+  const images: ProductImage[] = row.product_images.map((image) => ({
+    id: image.id,
+    url: image.url,
+    is_primary: image.is_primary,
+    sort_order: image.sort_order,
+    variant_id: image.variant_id,
+  }))
+
+  return {
+    id: row.id,
+    origin_id: row.origin_id,
+    name: row.name,
+    categoryName: row.category?.name ?? null,
+    categorySlug: row.category?.slug ?? null,
+    imageUrl: pickPrimaryImage(images),
+    priceFrom: from,
+    priceTo: to,
+    availability: aggregateAvailability(variants),
+    variantCount: row.product_variants.length,
+    isOffer: row.is_offer,
+    isBestseller: row.is_bestseller,
+  }
+}
+
+function normalizeAvailability(value: string): Availability {
+  return value === 'disponible' || value === 'agotado' || value === 'consultar'
+    ? value
+    : 'consultar'
+}
+
+export type CatalogQuery = {
+  search?: string
+  categoryIds?: string[] | null
+  availability?: Availability | null
+  onlyOffers?: boolean
+  onlyBestsellers?: boolean
+  page?: number
+  pageSize?: number
+}
+
+/**
+ * Catalogo paginado. La seleccion de ids ocurre en la funcion indexada
+ * search_product_ids y aqui solo se hidratan los 24 de la pagina actual.
+ */
+export async function fetchCatalogPage(
+  query: CatalogQuery,
+): Promise<Paginated<ProductCard>> {
+  const pageSize = query.pageSize ?? PAGE_SIZE
+  const page = Math.max(1, query.page ?? 1)
+  const offset = (page - 1) * pageSize
+
+  const { data: matches, error: matchError } = await supabase.rpc(
+    'search_product_ids',
+    {
+      p_query: query.search?.trim() ? query.search.trim() : undefined,
+      p_category_ids: query.categoryIds?.length ? query.categoryIds : undefined,
+      p_availability: query.availability ?? undefined,
+      p_only_offers: query.onlyOffers ?? false,
+      p_only_bestsellers: query.onlyBestsellers ?? false,
+      p_limit: pageSize,
+      p_offset: offset,
+    },
+  )
+
+  if (matchError) throw matchError
+
+  const rows = matches ?? []
+  const total = rows.length > 0 ? Number(rows[0].total) : 0
+  const ids = rows.map((row) => row.product_id)
+
+  if (ids.length === 0) {
+    return { items: [], total, page, pageSize, totalPages: 0 }
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select(CARD_SELECT)
+    .in('id', ids)
+
+  if (error) throw error
+
+  // PostgREST no garantiza el orden de .in(), asi que se restaura el de la
+  // funcion de busqueda, que es el orden por relevancia.
+  const byId = new Map((data as unknown as CardRow[]).map((row) => [row.id, row]))
+  const items = ids
+    .map((id) => byId.get(id))
+    .filter((row): row is CardRow => Boolean(row))
+    .map(toCard)
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  }
+}
+
+/** Secciones del Home: se alimentan de los flags, nunca de una lista fija. */
+export async function fetchHighlighted(
+  kind: 'offer' | 'bestseller',
+  limit = 12,
+): Promise<ProductCard[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(CARD_SELECT)
+    .eq(kind === 'offer' ? 'is_offer' : 'is_bestseller', true)
+    .order('updated_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return (data as unknown as CardRow[]).map(toCard)
+}
+
+/** Cinta del Home: productos con imagen para que la animacion no se vea vacia. */
+export async function fetchMarqueeProducts(limit = 16): Promise<ProductCard[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(CARD_SELECT)
+    .order('is_bestseller', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return (data as unknown as CardRow[]).map(toCard)
+}
+
+const DETAIL_SELECT = `
+  id,
+  origin_id,
+  name,
+  description,
+  is_offer,
+  is_bestseller,
+  category:categories!products_category_id_fkey (
+    id, name, slug, parent_id
+  ),
+  product_variants (
+    id, origin_id, size, color, presentation, sale_unit,
+    price, barcode, availability
+  ),
+  product_images ( id, url, is_primary, sort_order, variant_id )
+` as const
+
+type DetailRow = {
+  id: string
+  origin_id: number | null
+  name: string
+  description: string | null
+  is_offer: boolean
+  is_bestseller: boolean
+  category: {
+    id: string
+    name: string
+    slug: string
+    parent_id: string | null
+  } | null
+  product_variants: {
+    id: string
+    origin_id: number | null
+    size: string | null
+    color: string | null
+    presentation: string | null
+    sale_unit: string | null
+    price: number
+    barcode: string | null
+    availability: string
+  }[]
+  product_images: {
+    id: string
+    url: string
+    is_primary: boolean
+    sort_order: number
+    variant_id: string | null
+  }[]
+}
+
+/** La ficha se busca por origin_id, que es el codigo del sistema de facturacion. */
+export async function fetchProductByOriginId(
+  originId: number,
+): Promise<ProductDetail | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(DETAIL_SELECT)
+    .eq('origin_id', originId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  return hydrateDetail(data as unknown as DetailRow)
+}
+
+export async function fetchProductById(
+  id: string,
+): Promise<ProductDetail | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .select(DETAIL_SELECT)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) return null
+
+  return hydrateDetail(data as unknown as DetailRow)
+}
+
+async function hydrateDetail(row: DetailRow): Promise<ProductDetail> {
+  let parentCategory: ProductDetail['parentCategory'] = null
+
+  if (row.category?.parent_id) {
+    const { data } = await supabase
+      .from('categories')
+      .select('id, name, slug')
+      .eq('id', row.category.parent_id)
+      .maybeSingle()
+    parentCategory = data ?? null
+  }
+
+  const variants = row.product_variants
+    .map(toVariant)
+    .sort((a, b) =>
+      (a.size ?? '').localeCompare(b.size ?? '', 'es', { numeric: true }),
+    )
+
+  return {
+    id: row.id,
+    origin_id: row.origin_id,
+    name: row.name,
+    description: row.description,
+    isOffer: row.is_offer,
+    isBestseller: row.is_bestseller,
+    category: row.category
+      ? { id: row.category.id, name: row.category.name, slug: row.category.slug }
+      : null,
+    parentCategory,
+    variants,
+    images: row.product_images.map((image) => ({
+      id: image.id,
+      url: image.url,
+      is_primary: image.is_primary,
+      sort_order: image.sort_order,
+      variant_id: image.variant_id,
+    })),
+  }
+}

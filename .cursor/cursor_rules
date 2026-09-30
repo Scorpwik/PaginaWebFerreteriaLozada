@@ -1,0 +1,222 @@
+# CONTEXTO DEL PROYECTO: Ferretería Lozada
+
+## Stack Técnico
+- Frontend: React 19 + Vite + TypeScript
+- Estilos: Tailwind CSS (ÚNICA librería de CSS, no hay Bootstrap)
+- Base de datos: Supabase (PostgreSQL 17.6) con RLS activado
+- Autenticación: Supabase Auth
+- Backend: Edge Functions (Deno) para crear cotizaciones
+- Animaciones: Lenis (smooth scroll) + GSAP + ScrollTrigger
+- PDF: pdf-lib (genera en servidor, no en DOM)
+- Búsqueda: PostgreSQL trigram (pg_trgm)
+
+## Estructura de datos Supabase
+
+### Tablas principales
+- `products` (id uuid, origin_id int UNIQUE, name, description, category_id, is_offer bool, is_bestseller bool, created_at, updated_at)
+- `product_variants` (id, product_id, origin_id int UNIQUE, size, color, presentation, sale_unit, price numeric, barcode, availability: 'disponible'|'agotado'|'consultar')
+- `product_images` (id, product_id, variant_id, url, is_primary bool, sort_order int)
+- `categories` (id, name, slug UNIQUE, parent_id uuid —subcategorías—, sort_order, created_at)
+- `orders` (id, quote_number text UNIQUE, client_name, total numeric, pdf_url, created_at, valid_until date —15 días—)
+- `order_items` (id, order_id, variant_id, product_name, variant_label, quantity, unit_price, subtotal)
+- `site_settings` (key text PK, value jsonb)
+- `admins` (id uuid FK auth.users, name, created_at)
+
+Claves: products.origin_id y product_variants.origin_id vienen del Excel del sistema de facturación (nunca usar barcode como llave).
+
+### RLS Status
+- RLS activo en todas las tablas
+- Lectura pública: catálogo (products, variants, images, categories)
+- Inserción pública: orders y order_items (pero validadas por Edge Function, no directamente)
+- Escritura restringida: solo users en tabla `admins` pueden editar catálogo
+
+## Estructura de carpetas (src/)
+
+```
+src/
+  lib/
+    supabase.ts          — cliente Supabase con anon key (nunca service role)
+    types.database.ts    — tipos generados del esquema
+    validation.ts        — esquemas Zod para validar inputs
+    sanitize.ts          — sanitización de HTML/scripts
+    format.ts            — formateo de números, fechas, variantes
+  
+  data/
+    categories.ts        — fetch categorías y subcategorías
+    products.ts          — fetch productos con variantes paginadas
+    search.ts            — búsqueda full-text (nombre, barcode, size)
+    settings.ts          — fetch de site_settings
+    orders.ts            — lectura de pedidos (solo admin)
+    admin/
+      products.ts        — CRUD de productos (admin only)
+      categories.ts      — CRUD de categorías (admin only)
+      images.ts          — upload a bucket product-images
+      settings.ts        — editar site_settings
+      import.ts          — upsert desde JSON del normalizador
+      stats.ts           — estadísticas simple (products_solicitados, categorías_buscadas)
+  
+  features/
+    cart/
+      CartProvider.tsx   — contexto React para el carrito
+      useCart.ts         — hook del carrito
+      cart.ts            — lógica pura (add, remove, quantity, grouping)
+      storage.ts         — persistencia en sessionStorage
+    
+    catalog/
+      ProductCard.tsx    — tarjeta de producto con imagen/placeholder
+      ProductGrid.tsx    — grid paginada (24 por página)
+      Filters.tsx        — filtros por categoría, disponibilidad
+      VariantSelector.tsx — selectores de medida/color/presentation/sale_unit
+      AvailabilityBadge.tsx — badge de disponible/agotado/consultar
+      Pagination.tsx     — paginación inferior
+    
+    quote/
+      QuoteFlow.tsx      — flujo de generación de cotización
+      ClientNameStep.tsx — captura solo nombre del cliente
+      PdfShareStep.tsx   — botón compartir/descargar PDF + link a WhatsApp
+      useQuote.ts        — hook que llama Edge Function create-quote
+    
+    whatsapp/
+      buildMessage.ts    — arma mensaje estructurado sin códigos
+      WhatsAppButton.tsx — botón con link prellenado
+    
+    auth/
+      AuthProvider.tsx   — Supabase Auth provider
+      useAdmin.ts        — hook que valida si user está en tabla admins
+      RequireAdmin.tsx   — componente que redirige si no es admin
+  
+  components/
+    Button.tsx, Input.tsx, Badge.tsx, Modal.tsx, Skeleton.tsx (primitivas)
+  
+  layout/
+    Header.tsx           — logo, navegación, buscador, carrito
+    CartBadge.tsx        — badge con contador (microanimación al añadir)
+    Footer.tsx
+    MobileNav.tsx        — hamburguesa en móvil
+  
+  animation/
+    LenisProvider.tsx    — inicializa Lenis (smooth scroll)
+    useReveal.ts         — hook para GSAP + ScrollTrigger (aparición de tarjetas)
+    Marquee.tsx          — cinta horizontal del Home (GSAP, pausa al tocar)
+    useReducedMotion.ts  — respeta prefers-reduced-motion
+  
+  pages/
+    Home.tsx             — hero + cinta + ofertas + más vendidos + sobre nosotros
+    Catalog.tsx          — grid paginado con filtros
+    Category.tsx         — catálogo filtrado por categoría
+    Product.tsx          — ficha con variantes, disponibilidad, botón carrito
+    Cart.tsx             — resumen del carrito + botón "Cotizar"
+    Quote.tsx            — flujo de cotización (nombre cliente → PDF → WhatsApp)
+    About.tsx            — mapa + historia + contacto
+    NotFound.tsx
+    
+    admin/
+      Login.tsx
+      Dashboard.tsx      — índice del panel
+      ProductsAdmin.tsx  — CRUD productos
+      CategoriesAdmin.tsx
+      ImagesAdmin.tsx
+      SettingsAdmin.tsx
+      ImportAdmin.tsx    — upload JSON del normalizador
+      StatsAdmin.tsx
+  
+  App.tsx                — rutas principales (React Router)
+  index.css              — estilos globales (Tailwind + variables CSS custom)
+
+supabase/
+  migrations/
+    0001_fix_admin_rls_recursion.sql
+    0002_indexes_triggers.sql
+    0003_cron_purge_quotes.sql
+    0004_seed_site_settings.sql
+    0005_storage.sql
+    0006_rate_limits.sql
+  
+  functions/
+    create-quote/
+      index.ts           — orquestación principal
+      validate.ts        — validación Zod de items + client_name
+      pdf.ts             — generación de PDF con pdf-lib
+      rateLimit.ts       — incrementa contador en tabla rate_limits
+```
+
+## Rutas (React Router v6)
+
+```
+/ ......................... Home
+/catalogo .................. Catálogo paginado (?q=busca, ?page=2, ?disp=disponible)
+/catalogo/:categorySlug .... Categoría y subcategorías
+/producto/:originId ........ Ficha de producto (origin_id, no UUID)
+/carrito ................... Resumen del carrito
+/carrito/cotizar ........... Flujo de nombre + PDF + WhatsApp
+/nosotros .................. Sobre nosotros + mapa
+
+/admin/login ............... Login Supabase Auth
+/admin ..................... Dashboard (requiere admin)
+/admin/productos ........... CRUD productos
+/admin/categorias .......... CRUD categorías
+/admin/imagenes ............ Upload de imágenes
+/admin/ajustes ............. Editar site_settings
+/admin/importar ............ Upload JSON del normalizador
+/admin/cotizaciones ........ Historial (purgado automático a 15 días)
+/admin/estadisticas ........ Productos solicitados, categorías buscadas
+```
+
+## Fases de desarrollo (estado actual)
+
+- **Fase 0**: Migraciones correctivas (archivos en `supabase/migrations/` + aplicadas en remoto) — ✅
+- **Fase 1**: Catálogo de solo lectura (Home, búsqueda, paginación, ficha) — ✅
+- **Fase 2**: Carrito persistente — ✅
+- **Fase 3**: Edge Function create-quote, PDF, WhatsApp — ✅
+- **Fase 4**: Panel admin — ✅ (probar contra base real: RLS, buckets, PDF firmado)
+- **Fase 5**: Importador JSON del normalizador (`/admin/importar`) — ✅
+- **Fase 6**: Animaciones + SEO + a11y + performance — ✅ (Home: 1 buscador, solo Ofertas/Más vendidos)
+- **Fase 7**: Deploy a Vercel — 📋 CUANDO ESTÉ LISTO
+
+## Reglas de arquitectura (CRÍTICO)
+
+1. **Sin hardcoding de negocio**: whatsapp_number, address, schedule, textos del Home → TODO viene de site_settings vía hook `useSettings()`.
+2. **Colores y marca**: Definir UNA VEZ en `tailwind.config.js` (primary: #F23005, secondary: #262626, #F2A007, #CDE1F4). Ningún componente tiene colores hardcodeados.
+3. **Supabase client**: Importar SOLO desde `lib/supabase.ts` (cliente anon, nunca service role en frontend). Componentes NO importan `@supabase/supabase-js` directo.
+4. **Acceso a datos**: TODO pasa por módulos en `src/data/`. Componentes nunca hacen `.from('tabla').select()`.
+5. **RLS es el muro**: La validación REAL ocurre en Edge Functions (servidor con service role). Frontend valida por UX, no por seguridad.
+6. **TypeScript**: Usar tipos generados de Supabase (`types.database.ts`). Evitar `any`.
+7. **Validación**: Zod schemas en `lib/validation.ts` — reutilizar en frontend + Edge Functions.
+
+## Información del negocio (no varía)
+
+- Nombre: **Ferretería Lozada**
+- Dirección: Av. Mariscal Sucre s27-184, Quito (editable desde admin → site_settings)
+- WhatsApp: +593 995307272 (editable desde admin → site_settings)
+- Horario: lunes-viernes 8:30-17:15 (editable)
+- Historia: Nació 2002, crece con Sur de Quito (editable)
+- Colores: Primario #F23005, secundarios #262626, #F2A007, #CDE1F4
+- Logo: Aún no definitivo, espacio reservado en header
+- Diferenciador: Asesoran, se preocupan por el bolsillo del cliente, no solo vender
+
+## Herramienta externa (paralela)
+
+- **Normalizador Excel** en Python + Streamlit: clasifica 2.900 productos en familias + variantes, genera JSON que importa el sitio. Estado: 1111 por revisar, 423 aprobadas, 2912 total.
+
+## Siguientes pasos INMEDIATOS
+
+1. Probar Home (1 buscador, Ofertas + Más vendidos) y catálogo con filtros.
+2. Probar importador en `/admin/importar` con JSON real del normalizador.
+3. Fase 7 (cuando quieras): Deploy a Vercel (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) y corregir dominio en `robots.txt` / `sitemap.xml`.
+
+## Debugging útil
+
+- `localStorage.clear()` — borra sesión del navegador
+- `sessionStorage.getItem('cart')` — inspecciona carrito en console
+- Supabase Dashboard → Logs → ver errores de RLS en tiempo real
+- EXPLAIN ANALYZE en migraciones para revisar índices
+- `supabase status` — estado de Edge Functions
+- Supabase Dashboard → Authentication → ver usuarios y sesiones
+
+## Stack de deployment
+
+- Frontend: Vercel (con variables VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY en .env)
+- Backend: Supabase (ya alojado)
+- Storage: Supabase Storage (product-images público, quotes privado con URLs firmadas)
+- Domain + CDN: Cloudflare (después, no es bloqueante ahora)
+- Cost: $0/mes inicialmente (Supabase free, Vercel free, Edge Functions free tier)
