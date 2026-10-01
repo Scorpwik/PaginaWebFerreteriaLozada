@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { Outlet, Route, Routes } from 'react-router-dom'
+import { matchPath, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { SettingsProvider } from '@/features/settings/SettingsProvider'
 import { CartProvider } from '@/features/cart/CartProvider'
 import { AuthProvider } from '@/features/auth/AuthProvider'
@@ -40,6 +41,37 @@ const AdminImport = lazy(() => import('@/pages/admin/AdminImport'))
  * Sesion de Supabase Auth solo para el area admin. Asi la tienda publica no
  * consulta la sesion ni la tabla admins en cada visita.
  */
+/** Patrones reales de la app. Vercel agrupa visitas por ruta, no por cada producto. */
+const ANALYTICS_ROUTES = [
+  '/admin/login',
+  '/admin/productos/nuevo',
+  '/admin/productos/:id',
+  '/admin/productos',
+  '/admin/categorias',
+  '/admin/cotizaciones',
+  '/admin/ajustes',
+  '/admin/importar',
+  '/admin',
+  '/catalogo/:parentSlug/:childSlug',
+  '/catalogo/:parentSlug',
+  '/catalogo',
+  '/producto/:originId',
+  '/carrito/cotizar',
+  '/carrito',
+  '/nosotros',
+  '/',
+]
+
+function RouteAnalytics() {
+  const { pathname } = useLocation()
+  const route =
+    ANALYTICS_ROUTES.find((pattern) =>
+      matchPath({ path: pattern, end: true }, pathname),
+    ) ?? pathname
+
+  return <Analytics route={route} path={pathname} />
+}
+
 function AdminArea() {
   return (
     <AuthProvider>
@@ -102,6 +134,7 @@ function PublicShell() {
 export function App() {
   return (
     <SettingsProvider>
+      <RouteAnalytics />
       <ScrollToTop />
       <Routes>
         {/* Panel admin: sin Header, Footer ni carrito de la tienda. */}
