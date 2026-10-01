@@ -1,6 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { fetchSearchSuggestions } from '@/data/products'
+import { formatPrice } from '@/lib/format'
+import { productPath } from '@/lib/routes'
 import { searchQuerySchema } from '@/lib/validation'
+import type { ProductCard } from '@/lib/domain'
 
 type Props = {
   initialValue?: string
@@ -20,15 +24,79 @@ export function SearchBar({
   id = 'buscador',
 }: Props) {
   const [value, setValue] = useState(initialValue)
+  const [suggestions, setSuggestions] = useState<ProductCard[]>([])
+  const [open, setOpen] = useState(false)
+  const [highlight, setHighlight] = useState(-1)
   const navigate = useNavigate()
+  const listId = useId()
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault()
-    const term = searchQuerySchema.parse(value)
+    goToCatalog(value)
+  }
+
+  const goToCatalog = (raw: string) => {
+    const term = searchQuerySchema.parse(raw)
+    setOpen(false)
     navigate(term ? `/catalogo?q=${encodeURIComponent(term)}` : '/catalogo')
   }
 
+  useEffect(() => {
+    const term = value.trim()
+    if (term.length < 2) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void fetchSearchSuggestions(term)
+        .then((items) => {
+          if (cancelled) return
+          setSuggestions(items)
+          setOpen(items.length > 0)
+          setHighlight(-1)
+        })
+        .catch(() => {
+          if (cancelled) return
+          setSuggestions([])
+          setOpen(false)
+        })
+    }, 250)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [value])
+
+  const pick = (product: ProductCard) => {
+    setOpen(false)
+    navigate(productPath(product))
+  }
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open) return
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setHighlight((current) =>
+        Math.min(current + 1, suggestions.length - 1),
+      )
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setHighlight((current) => Math.max(current - 1, -1))
+    } else if (event.key === 'Escape') {
+      setOpen(false)
+    } else if (event.key === 'Enter' && highlight >= 0 && suggestions[highlight]) {
+      event.preventDefault()
+      pick(suggestions[highlight])
+    }
+  }
+
   const tall = size === 'lg'
+  const showList = open && suggestions.length > 0
 
   return (
     <form role="search" onSubmit={submit} className="w-full">
@@ -37,7 +105,7 @@ export function SearchBar({
       </label>
       <div className="relative">
         <SearchIcon
-          className={`text-ink-400 pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 ${tall ? 'size-6' : 'size-5'}`}
+          className={`text-ink-400 pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 ${tall ? 'size-6' : 'size-5'}`}
         />
         <input
           id={id}
@@ -48,7 +116,18 @@ export function SearchBar({
           autoComplete="off"
           autoFocus={autoFocus}
           value={value}
+          aria-autocomplete="list"
+          aria-expanded={showList}
+          aria-controls={showList ? listId : undefined}
+          aria-activedescendant={
+            highlight >= 0 ? `${listId}-opt-${highlight}` : undefined
+          }
           onChange={(event) => setValue(event.target.value)}
+          onKeyDown={onKeyDown}
+          onFocus={() => {
+            if (suggestions.length > 0) setOpen(true)
+          }}
+          onBlur={() => setOpen(false)}
           placeholder="Busca por nombre, código, medida o marca"
           className={`border-ink-200 placeholder:text-ink-400 focus:border-brand-600 w-full rounded-xl border-2 bg-white pl-12 pr-28 font-medium shadow-sm transition-colors focus:outline-none ${
             tall ? 'py-4 text-base' : 'py-3 text-[0.9375rem]'
@@ -56,12 +135,59 @@ export function SearchBar({
         />
         <button
           type="submit"
-          className={`bg-brand-700 hover:bg-brand-800 absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg font-semibold text-white ${
+          className={`bg-brand-700 hover:bg-brand-800 absolute right-1.5 top-1/2 z-10 -translate-y-1/2 rounded-lg font-semibold text-white ${
             tall ? 'px-5 py-2.5 text-sm' : 'px-4 py-2 text-sm'
           }`}
         >
           Buscar
         </button>
+
+        {showList ? (
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label="Sugerencias de búsqueda"
+            className="border-ink-100 absolute z-20 mt-1 max-h-80 w-full overflow-auto rounded-xl border bg-white py-1 shadow-lg"
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            {suggestions.map((product, index) => {
+              const active = index === highlight
+              const price =
+                product.availability === 'consultar' || product.priceFrom === null
+                  ? 'Consultar'
+                  : formatPrice(product.priceFrom)
+
+              return (
+                <li key={product.id} role="presentation">
+                  <button
+                    id={`${listId}-opt-${index}`}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => pick(product)}
+                    className={`flex w-full items-start justify-between gap-3 px-4 py-2.5 text-left ${
+                      active ? 'bg-brand-50' : 'hover:bg-ink-50'
+                    }`}
+                  >
+                    <span>
+                      <span className="text-ink-900 block text-sm font-semibold">
+                        {product.name}
+                      </span>
+                      {product.categoryName ? (
+                        <span className="text-ink-500 text-xs">
+                          {product.categoryName}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="text-ink-700 shrink-0 text-sm font-bold">
+                      {price}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        ) : null}
       </div>
     </form>
   )

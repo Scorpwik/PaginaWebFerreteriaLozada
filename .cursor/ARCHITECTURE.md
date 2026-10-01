@@ -261,6 +261,19 @@ auth.users              (no tocado, lo maneja Supabase Auth)
 
 ---
 
+## Rutas públicas
+
+```
+/ ...................... Home
+/catalogo .............. Catálogo paginado
+/catalogo/:slug ........ Categoría
+/producto/:originId .... Ficha de producto
+/promociones ........... Combos vigentes (página dedicada)
+/carrito ............... Carrito
+/carrito/cotizar ....... Cotización + WhatsApp
+/nosotros .............. Sobre nosotros
+```
+
 ## Flujos principales
 
 ### 1. Ver catálogo
@@ -391,6 +404,7 @@ Componentes:
 - Catálogo (grid paginado, filtros por categoría)
 - Ficha de producto (variantes, disponibilidad, botón carrito)
 - Búsqueda (trigram rápido)
+- Promociones (`/promociones` + sección en Home si hay vigentes)
 
 Hooks:
 - `useSettings()` — leer site_settings (whatsapp, horarios, textos)
@@ -441,7 +455,8 @@ Lógica:
 **Estado: ✅ IMPLEMENTADA**
 
 - Tabla `promotions` (migración `20261001015536_promotions.sql`), independiente del catálogo
-- Home: sección **Promociones** después del buscador y antes de Ofertas; solo si hay vigentes (`start_date ≤ hoy ≤ end_date`, calendario de Quito)
+- Home: sección **Promociones** después del buscador y antes de Ofertas; solo si hay vigentes (`start_date ≤ hoy ≤ end_date`, calendario de Quito). Botón **Ver más** a `/promociones`
+- Página pública `/promociones`: todas las vigentes; si no hay ninguna, mensaje vacío (la página sí existe)
 - Card: imagen, título, `price_label`, badge de días, **Solicitar combo** (WhatsApp con texto) y aviso de acercarse con la imagen
 - Admin `/admin/promociones`: activas / expiradas (archivo), crear/editar, imagen archivo o URL, atajos de fecha, reactivar
 - Datos: `src/data/promotions.ts` (público) y `src/data/adminPromotions.ts` (CRUD)

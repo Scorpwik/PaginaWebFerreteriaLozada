@@ -17,6 +17,7 @@ export default defineConfig({
           // Las animaciones no deben entrar en el bundle critico del catalogo.
           animation: ['gsap', 'lenis'],
           supabase: ['@supabase/supabase-js'],
+          charts: ['recharts'],
         },
       },
     },

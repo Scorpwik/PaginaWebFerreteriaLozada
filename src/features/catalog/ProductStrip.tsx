@@ -29,14 +29,14 @@ export function ProductStrip({
           <li key={product.id} className="w-44 shrink-0 sm:w-52">
             <Link
               to={productPath(product)}
-              className="group border-ink-100 rounded-card block overflow-hidden border bg-white transition-shadow hover:shadow-md"
+              className="card-hover-desktop group border-ink-100 rounded-card block overflow-hidden border bg-white"
             >
               <div className="bg-ink-50 aspect-square overflow-hidden">
                 <ProductImage
                   url={product.imageUrl}
                   alt={product.name}
                   sizes="13rem"
-                  className="size-full transition-transform duration-500 group-hover:scale-105"
+                  className="size-full lg:transition-transform lg:duration-500 lg:group-hover:scale-105"
                 />
               </div>
               <div className="p-3">

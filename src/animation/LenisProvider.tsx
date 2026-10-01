@@ -1,8 +1,12 @@
 import { useEffect, type ReactNode } from 'react'
 import Lenis from 'lenis'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useLocation } from 'react-router-dom'
 import { useReducedMotion } from './useReducedMotion'
 import 'lenis/dist/lenis.css'
+
+gsap.registerPlugin(ScrollTrigger)
 
 /**
  * Smooth scroll global con Lenis. Se monta solo en la tienda publica (no en
@@ -22,6 +26,8 @@ export function LenisProvider({ children }: { children: ReactNode }) {
       smoothWheel: true,
       touchMultiplier: 1.15,
     })
+
+    lenis.on('scroll', ScrollTrigger.update)
 
     let frame = 0
     const tick = (time: number) => {

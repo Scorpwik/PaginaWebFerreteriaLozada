@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
-import { fetchAdminStats } from '@/data/adminQuotes'
+import { fetchAdminStats } from '@/data/admin/stats'
 import { AdminCard } from '@/features/admin/FormControls'
+import { QuotesByDayChart } from '@/features/admin/QuotesByDayChart'
 import { ErrorState, Skeleton } from '@/components/States'
 import { formatMoney, formatQuantity } from '@/lib/format'
 import { useAsync } from '@/lib/useAsync'
@@ -10,15 +11,20 @@ function Stat({
   label,
   value,
   hint,
+  to,
   tone = 'neutral',
 }: {
   label: string
   value: string
   hint?: string
+  to: string
   tone?: 'neutral' | 'warn'
 }) {
   return (
-    <div className="border-ink-100 rounded-card border bg-white p-4">
+    <Link
+      to={to}
+      className="border-ink-100 rounded-card hover:border-ink-200 block cursor-pointer border bg-white p-4 transition-shadow hover:shadow-md"
+    >
       <p className="text-ink-500 text-xs font-semibold uppercase tracking-wide">
         {label}
       </p>
@@ -30,7 +36,7 @@ function Stat({
         {value}
       </p>
       {hint ? <p className="text-ink-500 mt-1 text-xs">{hint}</p> : null}
-    </div>
+    </Link>
   )
 }
 
@@ -63,27 +69,32 @@ export default function AdminDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Stat
+          to="/admin/cotizaciones"
           label="Cotizaciones"
           value={String(data.quoteCount)}
           hint="Pedidos generados en los últimos 15 días"
         />
         <Stat
+          to="/admin/cotizaciones"
           label="Monto cotizado"
           value={formatMoney(data.quotedTotal)}
           hint="Suma referencial, no ventas confirmadas"
         />
         <Stat
+          to="/admin/productos"
           label="Productos en catálogo"
           value={String(data.productCount)}
           hint={`${data.variantCount} variantes`}
         />
         <Stat
+          to="/admin/productos?filtro=agotado"
           label="Variantes agotadas"
           value={String(data.outOfStockCount)}
           tone={data.outOfStockCount > 0 ? 'warn' : 'neutral'}
           hint="Se muestran como Agotado en la tienda"
         />
         <Stat
+          to="/admin/productos?filtro=sin-precio"
           label="Variantes sin precio"
           value={String(data.noPriceCount)}
           tone={data.noPriceCount > 0 ? 'warn' : 'neutral'}
@@ -117,6 +128,8 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <QuotesByDayChart data={data.quotesByDay} />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <AdminCard
           title="Productos más pedidos"
@@ -128,24 +141,40 @@ export default function AdminDashboard() {
             </p>
           ) : (
             <ol className="divide-ink-100 divide-y">
-              {data.topProducts.map((row, index) => (
-                <li
-                  key={row.name}
-                  className="flex items-baseline gap-3 py-2.5 text-sm"
-                >
-                  <span className="text-ink-400 w-5 shrink-0 font-bold">
-                    {index + 1}
-                  </span>
-                  <span className="text-ink-900 min-w-0 flex-1 font-medium">
-                    {row.name}
-                  </span>
-                  <span className="text-ink-600 shrink-0 text-xs">
-                    {row.orders}{' '}
-                    {row.orders === 1 ? 'cotización' : 'cotizaciones'} ·{' '}
-                    {formatQuantity(row.quantity)} u.
-                  </span>
-                </li>
-              ))}
+              {data.topProducts.map((row, index) => {
+                const content = (
+                  <>
+                    <span className="text-ink-400 w-5 shrink-0 font-bold">
+                      {index + 1}
+                    </span>
+                    <span className="text-ink-900 min-w-0 flex-1 font-medium">
+                      {row.name}
+                    </span>
+                    <span className="text-ink-600 shrink-0 text-xs">
+                      {row.orders}{' '}
+                      {row.orders === 1 ? 'cotización' : 'cotizaciones'} ·{' '}
+                      {formatQuantity(row.quantity)} u.
+                    </span>
+                  </>
+                )
+
+                return (
+                  <li key={row.id ?? row.name}>
+                    {row.id ? (
+                      <Link
+                        to={`/admin/productos/${row.id}`}
+                        className="hover:bg-ink-50 -mx-2 flex cursor-pointer items-baseline gap-3 rounded-lg px-2 py-2.5 text-sm"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <div className="flex items-baseline gap-3 py-2.5 text-sm">
+                        {content}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ol>
           )}
         </AdminCard>
@@ -160,17 +189,33 @@ export default function AdminDashboard() {
             </p>
           ) : (
             <ul className="divide-ink-100 divide-y">
-              {data.topCategories.map((row) => (
-                <li
-                  key={row.name}
-                  className="flex items-baseline justify-between gap-3 py-2.5 text-sm"
-                >
-                  <span className="text-ink-900 font-medium">{row.name}</span>
-                  <span className="text-ink-600 shrink-0 text-xs">
-                    {row.quotes} {row.quotes === 1 ? 'cotización' : 'cotizaciones'}
-                  </span>
-                </li>
-              ))}
+              {data.topCategories.map((row) => {
+                const content = (
+                  <>
+                    <span className="text-ink-900 font-medium">{row.name}</span>
+                    <span className="text-ink-600 shrink-0 text-xs">
+                      {row.quotes} {row.quotes === 1 ? 'cotización' : 'cotizaciones'}
+                    </span>
+                  </>
+                )
+
+                return (
+                  <li key={row.id ?? row.name}>
+                    {row.id ? (
+                      <Link
+                        to={`/admin/categorias?categoria=${row.id}`}
+                        className="hover:bg-ink-50 -mx-2 flex cursor-pointer items-baseline justify-between gap-3 rounded-lg px-2 py-2.5 text-sm"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <div className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+                        {content}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </AdminCard>

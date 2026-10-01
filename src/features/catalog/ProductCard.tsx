@@ -42,18 +42,18 @@ export function ProductCard({
   return (
     <article
       data-reveal
-      className="border-ink-100 rounded-card group focus-within:ring-brand-600 relative flex flex-col overflow-hidden border bg-white transition-shadow will-change-transform hover:shadow-lg focus-within:ring-2"
+      className="card-hover-desktop border-ink-100 rounded-card group focus-within:ring-brand-600 relative flex flex-col overflow-hidden border bg-white will-change-transform focus-within:ring-2"
     >
       <div className="bg-ink-50 relative aspect-square overflow-hidden">
         <ProductImage
           url={product.imageUrl}
           alt={product.name}
           eager={eager}
-          className="size-full transition-transform duration-500 group-hover:scale-105"
+          className="size-full lg:transition-transform lg:duration-500 lg:group-hover:scale-105"
         />
 
         {product.isOffer ? (
-          <span className="bg-brand-600 absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="bg-brand-700 absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white">
             Oferta
           </span>
         ) : null}

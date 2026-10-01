@@ -77,6 +77,9 @@ export function Footer() {
             <Link to="/catalogo" className="hover:underline">
               Catálogo
             </Link>
+            <Link to="/promociones" className="hover:underline">
+              Promociones
+            </Link>
             <Link to="/nosotros" className="hover:underline">
               Sobre nosotros
             </Link>

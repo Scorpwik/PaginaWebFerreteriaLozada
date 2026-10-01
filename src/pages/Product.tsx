@@ -82,7 +82,7 @@ export function ProductPage() {
     selected.price > 0
 
   return (
-    <div className="container-page py-8">
+    <div className="container-page py-8 lg:pb-28">
       <Breadcrumbs
         items={[
           { label: 'Inicio', to: '/' },
@@ -133,7 +133,10 @@ export function ProductPage() {
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {showPrice && selected ? (
-              <p className="text-ink-900 text-3xl font-extrabold">
+              <p
+                key={selected.id}
+                className="price-swap text-ink-900 text-3xl font-extrabold"
+              >
                 {formatPrice(selected.price)}
                 {selected.sale_unit ? (
                   <span className="text-ink-500 ml-2 text-sm font-semibold">
@@ -243,10 +246,10 @@ function ProductGallery({
           alt={productName}
           eager
           sizes="(max-width: 1024px) 100vw, 50vw"
-          className="size-full"
+          className="size-full lg:transition-transform lg:duration-700 lg:hover:scale-105"
         />
         {isOffer ? (
-          <span className="bg-brand-600 absolute left-4 top-4 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white">
+          <span className="bg-brand-700 absolute left-4 top-4 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white">
             Oferta
           </span>
         ) : null}

@@ -46,6 +46,7 @@ export function useReveal(rootSelector = 'main'): void {
             stagger: 0.06,
             overwrite: true,
             onComplete: () => {
+              gsap.set(batch, { clearProps: 'transform,opacity,visibility' })
               for (const node of batch) {
                 ;(node as HTMLElement).setAttribute(REVEALED, '')
               }

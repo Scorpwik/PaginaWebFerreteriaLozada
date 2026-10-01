@@ -7,6 +7,7 @@ import { WhatsAppButton } from '@/features/whatsapp/WhatsAppButton'
 import { generalInquiryMessage } from '@/features/whatsapp/buildMessage'
 import { formatMoney } from '@/lib/format'
 import { useDocumentMeta } from '@/lib/useDocumentMeta'
+import { CheckoutProgress } from '@/features/quote/CheckoutProgress'
 
 export function CartPage() {
   const { cart, total, clear } = useCart()
@@ -23,6 +24,9 @@ export function CartPage() {
       <h1 className="text-ink-900 text-2xl font-extrabold tracking-tight sm:text-3xl">
         Tu carrito
       </h1>
+      <p className="text-ink-600 mt-2 max-w-xl text-sm">
+        Revisa tu lista y sigue al nombre. El pedido se cierra por WhatsApp.
+      </p>
 
       {cart.lines.length === 0 ? (
         <div className="mt-8">
@@ -37,7 +41,10 @@ export function CartPage() {
           />
         </div>
       ) : (
-        <div className="mt-8 lg:grid lg:grid-cols-[1fr_20rem] lg:gap-10 lg:items-start">
+        <>
+        <CheckoutProgress current={1} />
+
+        <div className="lg:grid lg:grid-cols-[1fr_20rem] lg:gap-10 lg:items-start">
           <div>
             <ul className="border-ink-100 rounded-card border px-4">
               {cart.lines.map((line) => (
@@ -83,7 +90,7 @@ export function CartPage() {
               paga nada en el sitio.
             </p>
 
-            <ButtonLink to="/carrito/cotizar" size="lg" className="mt-5 w-full">
+            <ButtonLink to="/carrito/cotizar" size="lg" className="mt-5 min-h-12 w-full">
               Continuar con el pedido
             </ButtonLink>
 
@@ -98,6 +105,7 @@ export function CartPage() {
             </div>
           </aside>
         </div>
+        </>
       )}
     </div>
   )

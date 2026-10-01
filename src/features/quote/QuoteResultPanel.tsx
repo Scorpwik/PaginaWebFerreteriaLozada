@@ -151,7 +151,7 @@ export function QuoteResultPanel({ result }: { result: QuoteResult }) {
           rel="noopener noreferrer"
           variant="whatsapp"
           size="lg"
-          className="w-full"
+          className="min-h-12 w-full text-base"
         >
           <WhatsAppIcon />
           Enviar pedido por WhatsApp

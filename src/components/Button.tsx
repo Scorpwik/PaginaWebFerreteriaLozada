@@ -10,7 +10,8 @@ const base =
 // brand-700 y no brand-600: el texto blanco sobre #F23005 no alcanza el
 // contraste AA en tamano normal.
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900',
+  primary:
+    'bg-brand-700 text-white shadow-md shadow-brand-900/15 hover:bg-brand-800 active:bg-brand-900',
   secondary: 'bg-ink-900 text-white hover:bg-ink-800 active:bg-ink-950',
   outline:
     'border-2 border-ink-200 bg-white text-ink-900 hover:border-brand-600 hover:text-brand-700',

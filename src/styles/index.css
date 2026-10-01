@@ -91,6 +91,17 @@
   }
 }
 
+@keyframes header-wa-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* Carrusel Nosotros: la pista va duplicada al 200%; -50% vuelve al inicio
    sin salto. Solo se aplica cuando hay overflow real. */
 @keyframes about-marquee {
@@ -109,6 +120,32 @@
 
   .page-enter {
     animation: page-enter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .header-wa-in {
+    animation: header-wa-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* Hover rico solo en desktop: GPU (transform) + sombra. En movil no se
+     aplica para no dejar :hover "pegado" despues de un toque. */
+  @media (min-width: 1024px) {
+    .card-hover-desktop {
+      transition:
+        transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .card-hover-desktop:hover,
+    .card-hover-desktop:focus-within {
+      transform: translateY(-6px) scale(1.015) rotate(-0.35deg);
+      box-shadow:
+        0 18px 40px -18px rgb(38 38 38 / 0.28),
+        0 8px 16px -12px rgb(38 38 38 / 0.18);
+    }
+  }
+
+  .price-swap {
+    animation: page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .about-marquee {

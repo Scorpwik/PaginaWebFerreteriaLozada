@@ -11,8 +11,14 @@ import { fetchCategoryTree } from '@/data/categories'
 import { fetchHighlighted } from '@/data/products'
 import { useAsync } from '@/lib/useAsync'
 import { useDocumentMeta, useStructuredData } from '@/lib/useDocumentMeta'
-import { useMemo } from 'react'
+import { useIsDesktop } from '@/animation/useIsDesktop'
+import { useReducedMotion } from '@/animation/useReducedMotion'
+import { useEffect, useMemo, useRef } from 'react'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import type { ProductCard } from '@/lib/domain'
+
+gsap.registerPlugin(ScrollTrigger)
 
 export function HomePage() {
   const settings = useSettings()
@@ -71,11 +77,11 @@ export function HomePage() {
       {/* z-10 y margen negativo suave: la tarjeta flota sobre el hero sin
           quedar tapada por la foto (antes el solape escondia el titulo). */}
       <section
-        className="container-page relative z-10 -mt-5 sm:-mt-6"
+        className="container-page relative z-10 -mt-5 sm:-mt-6 lg:-mt-8"
         aria-labelledby="buscar"
       >
-        <div className="rounded-card border-ink-100 border bg-white p-4 shadow-lg sm:p-6">
-          <h2 id="buscar" className="text-ink-900 mb-3 text-base font-bold">
+        <div className="rounded-card border-ink-100 border bg-white p-4 shadow-lg sm:p-6 lg:p-8">
+          <h2 id="buscar" className="text-ink-900 mb-3 text-base font-bold lg:text-lg">
             ¿Qué necesitas para tu obra?
           </h2>
           <SearchBar id="buscador-home" size="lg" />
@@ -107,7 +113,7 @@ export function HomePage() {
       <Process />
 
       {tree && tree.length > 0 ? (
-        <section className="container-page mt-16" aria-labelledby="categorias">
+        <section className="container-page mt-14 lg:mt-20" aria-labelledby="categorias">
           <h2
             id="categorias"
             className="text-ink-900 mb-4 text-xl font-extrabold tracking-tight"
@@ -130,31 +136,72 @@ function Hero() {
   const mobileSrc =
     homeHero.imageMobileUrl || homeHero.imageDesktopUrl || homeHero.imageUrl
   const hasPhoto = Boolean(desktopSrc || mobileSrc)
+  const sectionRef = useRef<HTMLElement>(null)
+  const mediaRef = useRef<HTMLDivElement>(null)
+  const isDesktop = useIsDesktop()
+  const reducedMotion = useReducedMotion()
+
+  useEffect(() => {
+    const section = sectionRef.current
+    const media = mediaRef.current
+    if (!hasPhoto || !isDesktop || reducedMotion || !section || !media) return
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        media,
+        { yPercent: -6 },
+        {
+          yPercent: 10,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: section,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: 0.55,
+          },
+        },
+      )
+    }, section)
+
+    return () => ctx.revert()
+  }, [hasPhoto, isDesktop, reducedMotion])
 
   return (
-    <section className="relative z-0 overflow-hidden bg-ink-900 pt-12 sm:pt-16">
+    <section
+      ref={sectionRef}
+      className="relative z-0 overflow-hidden bg-ink-900 pt-12 sm:pt-16 lg:pt-20"
+    >
       {hasPhoto ? (
         <>
-          {/* Dos recortes distintos: el celular ya no usa la panoramica del PC. */}
-          {mobileSrc ? (
-            <img
-              src={mobileSrc}
-              alt={homeHero.imageAlt}
-              fetchPriority="high"
-              decoding="sync"
-              className="absolute inset-0 size-full object-cover object-center md:hidden"
-            />
-          ) : null}
-          {desktopSrc ? (
-            <img
-              src={desktopSrc}
-              alt=""
-              aria-hidden={mobileSrc ? true : undefined}
-              fetchPriority="high"
-              decoding="sync"
-              className="absolute inset-0 hidden size-full object-cover object-center md:block"
-            />
-          ) : null}
+          <div
+            ref={mediaRef}
+            className={
+              isDesktop
+                ? 'absolute inset-0 origin-center scale-110 will-change-transform'
+                : 'absolute inset-0'
+            }
+          >
+            {/* Dos recortes distintos: el celular ya no usa la panoramica del PC. */}
+            {mobileSrc ? (
+              <img
+                src={mobileSrc}
+                alt={homeHero.imageAlt}
+                fetchPriority="high"
+                decoding="sync"
+                className="absolute inset-0 size-full object-cover object-center md:hidden"
+              />
+            ) : null}
+            {desktopSrc ? (
+              <img
+                src={desktopSrc}
+                alt=""
+                aria-hidden={mobileSrc ? true : undefined}
+                fetchPriority="high"
+                decoding="sync"
+                className="absolute inset-0 hidden size-full object-cover object-center md:block"
+              />
+            ) : null}
+          </div>
           <div
             className="absolute inset-0 bg-gradient-to-r from-ink-950/90 via-ink-950/75 to-ink-950/40"
             aria-hidden="true"
@@ -171,22 +218,42 @@ function Hero() {
         />
       )}
 
-      <div className="container-page relative pb-14 sm:pb-16">
+      <div className="container-page relative pb-14 sm:pb-16 lg:pb-20">
         <p className="text-amber-brand text-sm font-bold uppercase tracking-wide">
           Chillogallo, Sur de Quito
         </p>
-        <h1 className="mt-3 max-w-2xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Por qué confiar">
+          <li className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            Desde 2002
+          </li>
+          <li className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            24 años asesorando obras
+          </li>
+          <li className="rounded-full bg-white/12 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            Cotización por WhatsApp
+          </li>
+        </ul>
+        <h1 className="mt-4 max-w-2xl text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl">
           {homeHero.title}
         </h1>
         <p className="text-ink-100 mt-5 max-w-xl text-base leading-relaxed sm:text-lg">
           {homeHero.subtitle}
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink to="/catalogo" size="lg">
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <ButtonLink
+            to="/catalogo"
+            size="lg"
+            className="min-h-12 px-8 text-base shadow-lg shadow-brand-900/40 sm:min-w-[12.5rem]"
+          >
             {homeHero.primaryCta}
           </ButtonLink>
-          <WhatsAppButton message={generalInquiryMessage()} size="lg">
+          <WhatsAppButton
+            id="hero-whatsapp-cta"
+            message={generalInquiryMessage()}
+            size="lg"
+            className="min-h-12 sm:min-w-[12.5rem]"
+          >
             {homeHero.secondaryCta}
           </WhatsAppButton>
         </div>
@@ -200,7 +267,7 @@ function Process() {
   if (homeProcess.length === 0) return null
 
   return (
-    <section className="container-page mt-16" aria-labelledby="como-funciona">
+    <section className="container-page mt-14 lg:mt-20" aria-labelledby="como-funciona">
       <h2
         id="como-funciona"
         className="text-ink-900 text-xl font-extrabold tracking-tight"
@@ -217,7 +284,7 @@ function Process() {
           <li
             key={step.title}
             data-reveal
-            className="border-ink-100 rounded-card border bg-white p-5 will-change-transform"
+            className="card-hover-desktop border-ink-100 rounded-card border bg-white p-5 will-change-transform"
           >
             <span className="bg-brand-50 text-brand-700 grid size-9 place-items-center rounded-full text-sm font-extrabold">
               {index + 1}
@@ -250,7 +317,7 @@ function HighlightSection({
   if (!state.loading && (state.data ?? []).length === 0) return null
 
   return (
-    <section className="container-page mt-16" aria-labelledby={id}>
+    <section className="container-page mt-14 lg:mt-20" aria-labelledby={id}>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2
@@ -283,7 +350,7 @@ function Advice() {
   const settings = useSettings()
 
   return (
-    <section className="container-page mt-16">
+    <section className="container-page mt-14 mb-4 lg:mt-20 lg:mb-8">
       <div
         data-reveal
         className="rounded-card bg-sky-brand/60 border-sky-brand grid gap-6 border p-6 will-change-transform sm:p-10 lg:grid-cols-[1.4fr_1fr] lg:items-center"

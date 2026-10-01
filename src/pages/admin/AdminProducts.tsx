@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ButtonLink } from '@/components/Button'
 import { ErrorState, Skeleton } from '@/components/States'
 import { Pagination } from '@/components/Pagination'
@@ -28,9 +28,18 @@ function categoryOptions(nodes: CategoryNode[], depth = 0): {
   ])
 }
 
+function parseVariantIssue(
+  value: string | null,
+): 'agotado' | 'sin-precio' | null {
+  if (value === 'agotado' || value === 'sin-precio') return value
+  return null
+}
+
 export default function AdminProducts() {
   useDocumentMeta({ title: 'Productos | Administración', noIndex: true })
   const toast = useAdminToast()
+  const [params, setParams] = useSearchParams()
+  const variantIssue = parseVariantIssue(params.get('filtro'))
 
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
@@ -56,9 +65,10 @@ export default function AdminProducts() {
         categoryIds,
         onlyOffers,
         onlyBestsellers,
+        variantIssue,
         page,
       }),
-    [debouncedSearch, categoryIds, onlyOffers, onlyBestsellers, page],
+    [debouncedSearch, categoryIds, onlyOffers, onlyBestsellers, variantIssue, page],
   )
 
   const options = categoryOptions(buildCategoryTree(categories.data ?? []))
@@ -112,6 +122,17 @@ export default function AdminProducts() {
     setter(value)
   }
 
+  const setVariantIssue = (value: string) => {
+    setPage(1)
+    const next = new URLSearchParams(params)
+    if (value === 'agotado' || value === 'sin-precio') {
+      next.set('filtro', value)
+    } else {
+      next.delete('filtro')
+    }
+    setParams(next, { replace: true })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -119,7 +140,13 @@ export default function AdminProducts() {
           <h1 className="text-ink-900 text-2xl font-extrabold">Productos</h1>
           <p className="text-ink-600 mt-1 text-sm">
             {products.data
-              ? `${products.data.total} producto(s) en el catálogo.`
+              ? `${products.data.total} producto(s)${
+                  variantIssue === 'agotado'
+                    ? ' con variantes agotadas'
+                    : variantIssue === 'sin-precio'
+                      ? ' con variantes sin precio'
+                      : ' en el catálogo'
+                }.`
               : 'Cargando catálogo…'}
           </p>
         </div>
@@ -127,7 +154,7 @@ export default function AdminProducts() {
       </div>
 
       <AdminCard>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label
               htmlFor="admin-search"
@@ -172,6 +199,25 @@ export default function AdminProducts() {
                 subcategoría(s).
               </p>
             ) : null}
+          </div>
+
+          <div>
+            <label
+              htmlFor="admin-variant-issue"
+              className="text-ink-800 mb-1.5 block text-sm font-semibold"
+            >
+              Problema de variante
+            </label>
+            <select
+              id="admin-variant-issue"
+              value={variantIssue ?? ''}
+              onChange={(event) => setVariantIssue(event.target.value)}
+              className="admin-input"
+            >
+              <option value="">Todos</option>
+              <option value="agotado">Con variantes agotadas</option>
+              <option value="sin-precio">Con variantes sin precio</option>
+            </select>
           </div>
         </div>
 

@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Logo'
+import { MobileNav } from './MobileNav'
 import { useSettings } from '@/features/settings/SettingsProvider'
-import { WhatsAppIcon } from '@/features/whatsapp/WhatsAppButton'
-import { whatsappUrl, generalInquiryMessage } from '@/features/whatsapp/buildMessage'
+import { WhatsAppButton } from '@/features/whatsapp/WhatsAppButton'
+import { generalInquiryMessage } from '@/features/whatsapp/buildMessage'
 import type { ReactNode } from 'react'
 
 const links = [
   { to: '/', label: 'Inicio' },
   { to: '/catalogo', label: 'Catálogo' },
+  { to: '/promociones', label: 'Promociones' },
   { to: '/nosotros', label: 'Sobre nosotros' },
 ]
+
+const HERO_WHATSAPP_ID = 'hero-whatsapp-cta'
 
 /**
  * `actions` es el punto de extension de la cabecera: en el catalogo de solo
@@ -20,8 +24,30 @@ export function Header({ actions }: { actions?: ReactNode }) {
   const { whatsappNumber } = useSettings()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
+  const [showHeaderWhatsApp, setShowHeaderWhatsApp] = useState(
+    () => (typeof window === 'undefined' ? true : window.location.pathname !== '/'),
+  )
 
   useEffect(() => setMenuOpen(false), [location.pathname])
+
+  // En Home el CTA verde ya esta junto a "Ver catalogo". El del header solo
+  // aparece cuando ese boton sale de vista, para no duplicar.
+  useEffect(() => {
+    const heroCta = document.getElementById(HERO_WHATSAPP_ID)
+    if (!heroCta) {
+      setShowHeaderWhatsApp(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowHeaderWhatsApp(!entry.isIntersecting)
+      },
+      { threshold: 0, rootMargin: '-72px 0px 0px 0px' },
+    )
+    observer.observe(heroCta)
+    return () => observer.disconnect()
+  }, [location.pathname])
 
   return (
     <header className="border-ink-100 sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
@@ -52,15 +78,15 @@ export function Header({ actions }: { actions?: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <a
-              href={whatsappUrl(whatsappNumber, generalInquiryMessage())}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden items-center gap-2 rounded-lg bg-[#1c8c4c] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#166b3b] sm:inline-flex"
-            >
-              <WhatsAppIcon />
-              Pedir por WhatsApp
-            </a>
+            {showHeaderWhatsApp ? (
+              <WhatsAppButton
+                message={generalInquiryMessage()}
+                size="sm"
+                className="header-wa-in hidden sm:inline-flex"
+              >
+                Pedir por WhatsApp
+              </WhatsAppButton>
+            ) : null}
 
             {actions}
 
@@ -94,37 +120,11 @@ export function Header({ actions }: { actions?: ReactNode }) {
         </div>
       </div>
 
-      {menuOpen ? (
-        <nav
-          id="menu-movil"
-          aria-label="Menú móvil"
-          className="border-ink-100 border-t bg-white lg:hidden"
-        >
-          <ul className="container-page py-2">
-            {links.map((link) => (
-              <li key={link.to}>
-                <Link
-                  to={link.to}
-                  className="text-ink-800 hover:bg-ink-50 block rounded-lg px-3 py-3 font-semibold"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <a
-                href={whatsappUrl(whatsappNumber, generalInquiryMessage())}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg px-3 py-3 font-semibold text-[#166b3b]"
-              >
-                <WhatsAppIcon />
-                Pedir por WhatsApp
-              </a>
-            </li>
-          </ul>
-        </nav>
-      ) : null}
+      <MobileNav
+        open={menuOpen}
+        links={links}
+        whatsappNumber={whatsappNumber}
+      />
     </header>
   )
 }

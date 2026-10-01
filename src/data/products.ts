@@ -151,6 +151,21 @@ export async function fetchCatalogPage(
   }
 }
 
+/** Sugerencias del buscador. Tope bajo para no pesar en celulares lentos. */
+export async function fetchSearchSuggestions(
+  term: string,
+): Promise<ProductCard[]> {
+  const search = term.trim()
+  if (search.length < 2) return []
+
+  const page = await fetchCatalogPage({
+    search,
+    page: 1,
+    pageSize: 6,
+  })
+  return page.items
+}
+
 /** Secciones del Home: se alimentan de los flags, nunca de una lista fija. */
 export async function fetchHighlighted(
   kind: 'offer' | 'bestseller',

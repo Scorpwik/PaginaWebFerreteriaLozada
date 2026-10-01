@@ -210,6 +210,8 @@ export type AdminProductQuery = {
   categoryIds?: string[] | null
   onlyOffers?: boolean
   onlyBestsellers?: boolean
+  /** Productos con al menos una variante agotada o sin precio. */
+  variantIssue?: 'agotado' | 'sin-precio' | null
   page?: number
   pageSize?: number
 }
@@ -225,9 +227,17 @@ export async function fetchAdminProducts(query: AdminProductQuery): Promise<{
   const page = Math.max(1, query.page ?? 1)
   const from = (page - 1) * pageSize
 
-  let request = supabase
-    .from('products')
-    .select(ADMIN_LIST_SELECT, { count: 'exact' })
+  const innerVariants =
+    query.variantIssue === 'agotado' || query.variantIssue === 'sin-precio'
+
+  const select = innerVariants
+    ? ADMIN_LIST_SELECT.replace(
+        'product_variants ( id )',
+        'product_variants!inner ( id )',
+      )
+    : ADMIN_LIST_SELECT
+
+  let request = supabase.from('products').select(select, { count: 'exact' })
 
   const search = query.search?.trim()
   if (search) {
@@ -243,6 +253,13 @@ export async function fetchAdminProducts(query: AdminProductQuery): Promise<{
   }
   if (query.onlyOffers) request = request.eq('is_offer', true)
   if (query.onlyBestsellers) request = request.eq('is_bestseller', true)
+  if (query.variantIssue === 'agotado') {
+    request = request.eq('product_variants.availability', 'agotado')
+  } else if (query.variantIssue === 'sin-precio') {
+    request = request.or('price.is.null,price.eq.0', {
+      referencedTable: 'product_variants',
+    })
+  }
 
   const { data, error, count } = await request
     .order('updated_at', { ascending: false })

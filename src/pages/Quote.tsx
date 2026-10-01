@@ -10,6 +10,7 @@ import { createQuote, QuoteError } from '@/data/orders'
 import type { QuoteResult } from '@/data/orders'
 import { formatMoney } from '@/lib/format'
 import { useDocumentMeta } from '@/lib/useDocumentMeta'
+import { CheckoutProgress } from '@/features/quote/CheckoutProgress'
 
 export function QuotePage() {
   const { cart, total } = useCart()
@@ -53,6 +54,7 @@ export function QuotePage() {
 
       {result ? (
         <>
+          <CheckoutProgress current={3} />
           <h1 className="text-ink-900 text-center text-2xl font-extrabold tracking-tight sm:text-3xl">
             ¡Listo, {result.client_name}!
           </h1>
@@ -66,6 +68,7 @@ export function QuotePage() {
         </>
       ) : (
         <div className="mx-auto max-w-xl">
+          <CheckoutProgress current={2} />
           <h1 className="text-ink-900 text-2xl font-extrabold tracking-tight sm:text-3xl">
             Último paso
           </h1>

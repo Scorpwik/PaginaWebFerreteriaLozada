@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/Button'
 import { ErrorState, Skeleton } from '@/components/States'
 import {
@@ -33,6 +34,8 @@ export default function AdminCategories() {
   const toast = useAdminToast()
 
   const { data, loading, error, reload } = useAsync(() => fetchCategories(), [])
+  const [searchParams] = useSearchParams()
+  const highlightId = searchParams.get('categoria')
   const [editing, setEditing] = useState<Category | null>(null)
   const [form, setForm] = useState<CategoryFormValues>(emptyForm)
   const [slugTouched, setSlugTouched] = useState(false)
@@ -69,6 +72,18 @@ export default function AdminCategories() {
     })
     setSlugTouched(true)
   }, [editing])
+
+  useEffect(() => {
+    if (!data || !highlightId) return
+    const match = data.find((category) => category.id === highlightId)
+    if (match) setEditing(match)
+  }, [data, highlightId])
+
+  useEffect(() => {
+    if (!highlightId) return
+    const node = document.getElementById(`categoria-${highlightId}`)
+    node?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [highlightId, data])
 
   const setName = (name: string) => {
     setForm((current) => ({
@@ -183,6 +198,7 @@ export default function AdminCategories() {
               onEdit={setEditing}
               onDelete={(category) => void remove(category)}
               editingId={editing?.id ?? null}
+              highlightId={highlightId}
             />
           )}
         </AdminCard>
@@ -301,12 +317,14 @@ function CategoryTree({
   onEdit,
   onDelete,
   editingId,
+  highlightId,
   depth = 0,
 }: {
   nodes: CategoryNode[]
   onEdit: (category: Category) => void
   onDelete: (category: Category) => void
   editingId: string | null
+  highlightId: string | null
   depth?: number
 }) {
   return (
@@ -314,8 +332,11 @@ function CategoryTree({
       {nodes.map((node) => (
         <li key={node.id}>
           <div
+            id={`categoria-${node.id}`}
             className={`flex items-center gap-3 py-2.5 ${
-              editingId === node.id ? 'bg-brand-50 -mx-2 rounded-lg px-2' : ''
+              editingId === node.id || highlightId === node.id
+                ? 'bg-brand-50 -mx-2 rounded-lg px-2'
+                : ''
             }`}
             style={{ paddingLeft: depth * 18 }}
           >
@@ -355,6 +376,7 @@ function CategoryTree({
               onEdit={onEdit}
               onDelete={onDelete}
               editingId={editingId}
+              highlightId={highlightId}
               depth={depth + 1}
             />
           ) : null}

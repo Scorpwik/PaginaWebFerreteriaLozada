@@ -1,6 +1,16 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { categoryPath } from '@/lib/routes'
 import type { CategoryNode } from '@/lib/domain'
+
+const allLinkClass = (isActive: boolean) =>
+  isActive
+    ? 'bg-brand-50 text-brand-700 block rounded-lg px-3 py-2 text-sm font-semibold'
+    : 'text-ink-700 hover:bg-ink-50 block rounded-lg px-3 py-2 text-sm font-semibold'
+
+const allChipClass = (isActive: boolean) =>
+  isActive
+    ? 'bg-brand-700 inline-flex whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-white'
+    : 'border-ink-200 text-ink-700 inline-flex whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold'
 
 /**
  * Arbol de categorias. En escritorio es una columna; en movil se convierte en
@@ -13,6 +23,9 @@ export function CategoryNav({
   tree: CategoryNode[]
   activeSlug?: string
 }) {
+  const { pathname } = useLocation()
+  const allActive = pathname === '/catalogo'
+
   if (tree.length === 0) return null
 
   return (
@@ -22,6 +35,11 @@ export function CategoryNav({
           Categorías
         </h2>
         <ul className="space-y-1">
+          <li>
+            <NavLink to="/catalogo" end className={() => allLinkClass(allActive)}>
+              Todo
+            </NavLink>
+          </li>
           {tree.map((node) => (
             <li key={node.id}>
               <NavLink
@@ -65,6 +83,11 @@ export function CategoryNav({
       <div className="lg:hidden">
         <h2 className="sr-only">Categorías</h2>
         <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <li className="snap-start">
+            <NavLink to="/catalogo" end className={allChipClass(allActive)}>
+              Todo
+            </NavLink>
+          </li>
           {tree.flatMap((node) => [
             <li key={node.id} className="snap-start">
               <NavLink

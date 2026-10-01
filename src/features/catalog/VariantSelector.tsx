@@ -125,10 +125,10 @@ export function VariantSelector({
           {variants.map((variant) => (
             <label
               key={variant.id}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 ${
+              className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-colors ${
                 selected?.id === variant.id
-                  ? 'border-brand-600 bg-brand-50'
-                  : 'border-ink-200 hover:border-ink-300'
+                  ? 'border-brand-700 bg-brand-50'
+                  : 'border-ink-200 hover:border-brand-400'
               }`}
             >
               <input
@@ -181,11 +181,11 @@ export function VariantSelector({
                       onClick={() => choose(axis, value)}
                       disabled={!exists}
                       aria-pressed={isSelected}
-                      className={`rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                      className={`rounded-lg border-2 px-4 py-2.5 text-sm font-semibold transition-[color,background-color,border-color,transform] ${
                         isSelected
-                          ? 'border-brand-600 bg-brand-50 text-brand-700'
+                          ? 'border-brand-700 bg-brand-50 text-brand-800'
                           : possible
-                            ? 'border-ink-200 text-ink-800 hover:border-ink-400'
+                            ? 'border-ink-200 text-ink-800 hover:border-brand-400 active:scale-95'
                             : 'border-ink-100 text-ink-400'
                       }`}
                     >

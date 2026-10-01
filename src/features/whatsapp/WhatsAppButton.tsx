@@ -9,6 +9,7 @@ type Props = {
   variant?: ComponentProps<typeof ButtonAnchor>['variant']
   size?: ComponentProps<typeof ButtonAnchor>['size']
   className?: string
+  id?: string
 }
 
 /** El numero siempre sale de site_settings, nunca escrito en el componente. */
@@ -18,11 +19,13 @@ export function WhatsAppButton({
   variant = 'whatsapp',
   size = 'md',
   className,
+  id,
 }: Props) {
   const { whatsappNumber } = useSettings()
 
   return (
     <ButtonAnchor
+      id={id}
       href={whatsappUrl(whatsappNumber, message)}
       target="_blank"
       rel="noopener noreferrer"

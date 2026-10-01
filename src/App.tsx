@@ -22,6 +22,7 @@ import { ProductPage } from '@/pages/Product'
 import { CartPage } from '@/pages/Cart'
 import { QuotePage } from '@/pages/Quote'
 import { AboutPage } from '@/pages/About'
+import { PromotionsPage } from '@/pages/Promotions'
 import { NotFoundPage } from '@/pages/NotFound'
 
 /**
@@ -61,6 +62,7 @@ const ANALYTICS_ROUTES = [
   '/carrito/cotizar',
   '/carrito',
   '/nosotros',
+  '/promociones',
   '/',
 ]
 
@@ -121,6 +123,7 @@ function PublicShell() {
                 <Route path="/carrito" element={<CartPage />} />
                 <Route path="/carrito/cotizar" element={<QuotePage />} />
                 <Route path="/nosotros" element={<AboutPage />} />
+                <Route path="/promociones" element={<PromotionsPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </PageTransition>
