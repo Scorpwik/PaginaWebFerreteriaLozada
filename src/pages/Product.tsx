@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { AvailabilityBadge } from '@/components/AvailabilityBadge'
@@ -14,7 +14,12 @@ import { formatPrice, variantLabel } from '@/lib/format'
 import { parseProductParam, categoryPath } from '@/lib/routes'
 import { useAsync } from '@/lib/useAsync'
 import { useDocumentMeta } from '@/lib/useDocumentMeta'
-import type { Variant } from '@/lib/domain'
+import {
+  pickPrimaryImage,
+  sortProductImages,
+  type ProductImage as ProductImageRow,
+  type Variant,
+} from '@/lib/domain'
 
 export function ProductPage() {
   const { originId } = useParams()
@@ -34,7 +39,7 @@ export function ProductPage() {
       ? (data.description ??
         `${data.name} disponible en Ferretería Lozada, Chillogallo. Consulta medidas y precios y cotiza por WhatsApp.`)
       : undefined,
-    image: data?.images[0]?.url,
+    image: data ? (pickPrimaryImage(data.images) ?? undefined) : undefined,
   })
 
   if (error) {
@@ -65,11 +70,11 @@ export function ProductPage() {
   const variantImages = selected
     ? data.images.filter((image) => image.variant_id === selected.id)
     : []
-  const gallery =
+  const gallery = sortProductImages(
     variantImages.length > 0
       ? variantImages
-      : data.images.filter((image) => image.variant_id === null)
-  const cover = gallery[0]?.url ?? data.images[0]?.url ?? null
+      : data.images.filter((image) => image.variant_id === null),
+  )
 
   const showPrice =
     selected !== null &&
@@ -106,40 +111,14 @@ export function ProductPage() {
       />
 
       <div className="lg:grid lg:grid-cols-2 lg:gap-12">
-        <div>
-          <div className="bg-ink-50 rounded-card relative aspect-square overflow-hidden">
-            <ProductImage
-              url={cover}
-              alt={data.name}
-              eager
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="size-full"
-            />
-            {data.isOffer ? (
-              <span className="bg-brand-600 absolute left-4 top-4 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white">
-                Oferta
-              </span>
-            ) : null}
-          </div>
-
-          {gallery.length > 1 ? (
-            <ul className="mt-3 grid grid-cols-5 gap-2">
-              {gallery.slice(0, 5).map((image) => (
-                <li
-                  key={image.id}
-                  className="bg-ink-50 aspect-square overflow-hidden rounded-lg"
-                >
-                  <ProductImage
-                    url={image.url}
-                    alt={data.name}
-                    sizes="20vw"
-                    className="size-full"
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+        <ProductGallery
+          productId={data.id}
+          productName={data.name}
+          gallery={gallery}
+          fallbackUrl={pickPrimaryImage(data.images)}
+          isOffer={data.isOffer}
+          variantKey={selected?.id ?? 'product'}
+        />
 
         <div className="mt-8 lg:mt-0">
           {data.category ? (
@@ -224,6 +203,85 @@ export function ProductPage() {
           ) : null}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Galería: clic en miniatura cambia la imagen grande. */
+function ProductGallery({
+  productId,
+  productName,
+  gallery,
+  fallbackUrl,
+  isOffer,
+  variantKey,
+}: {
+  productId: string
+  productName: string
+  gallery: ProductImageRow[]
+  fallbackUrl: string | null
+  isOffer: boolean
+  variantKey: string
+}) {
+  const [activeImageId, setActiveImageId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setActiveImageId(null)
+  }, [productId, variantKey])
+
+  const active =
+    gallery.find((image) => image.id === activeImageId) ?? gallery[0] ?? null
+  const cover = active?.url ?? fallbackUrl
+  const thumbs = gallery
+
+  return (
+    <div>
+      <div className="bg-ink-50 rounded-card relative aspect-square overflow-hidden">
+        <ProductImage
+          key={active?.id ?? cover ?? 'empty'}
+          url={cover}
+          alt={productName}
+          eager
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          className="size-full"
+        />
+        {isOffer ? (
+          <span className="bg-brand-600 absolute left-4 top-4 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white">
+            Oferta
+          </span>
+        ) : null}
+      </div>
+
+      {thumbs.length > 1 ? (
+        <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
+          {thumbs.map((image, index) => {
+            const isActive = (active?.id ?? thumbs[0]?.id) === image.id
+
+            return (
+              <li key={image.id}>
+                <button
+                  type="button"
+                  onClick={() => setActiveImageId(image.id)}
+                  aria-label={`Ver imagen ${index + 1} de ${productName}`}
+                  aria-pressed={isActive}
+                  className={
+                    isActive
+                      ? 'border-brand-600 ring-brand-600/30 bg-ink-50 aspect-square w-full overflow-hidden rounded-lg border-2 ring-2'
+                      : 'border-ink-200 hover:border-brand-500 bg-ink-50 aspect-square w-full overflow-hidden rounded-lg border-2'
+                  }
+                >
+                  <ProductImage
+                    url={image.url}
+                    alt=""
+                    sizes="20vw"
+                    className="size-full"
+                  />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
     </div>
   )
 }

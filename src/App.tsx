@@ -36,6 +36,7 @@ const AdminProductEdit = lazy(() => import('@/pages/admin/AdminProductEdit'))
 const AdminQuotes = lazy(() => import('@/pages/admin/AdminQuotes'))
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'))
 const AdminImport = lazy(() => import('@/pages/admin/AdminImport'))
+const AdminPromotions = lazy(() => import('@/pages/admin/AdminPromotions'))
 
 /**
  * Sesion de Supabase Auth solo para el area admin. Asi la tienda publica no
@@ -51,6 +52,7 @@ const ANALYTICS_ROUTES = [
   '/admin/cotizaciones',
   '/admin/ajustes',
   '/admin/importar',
+  '/admin/promociones',
   '/admin',
   '/catalogo/:parentSlug/:childSlug',
   '/catalogo/:parentSlug',
@@ -156,6 +158,7 @@ export function App() {
             <Route path="cotizaciones" element={<AdminQuotes />} />
             <Route path="ajustes" element={<AdminSettings />} />
             <Route path="importar" element={<AdminImport />} />
+            <Route path="promociones" element={<AdminPromotions />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

@@ -5,6 +5,7 @@ import {
   categoryFormSchema,
   parseOrThrow,
   productFormSchema,
+  productImageUrlSchema,
   variantFormSchema,
   variantPatchSchema,
 } from '@/lib/validation'
@@ -468,14 +469,37 @@ export async function uploadSiteImage(file: File): Promise<string> {
   return publicUrl
 }
 
-/** Sube la imagen de un producto y registra su fila en product_images. */
-export async function uploadProductImage(
-  productId: string,
+/** Sube al bucket publico en una carpeta (promotions, site, etc.). */
+export async function uploadPublicImage(
+  folder: string,
   file: File,
-  options: { variantId?: string | null; isPrimary?: boolean } = {},
-): Promise<void> {
-  const { path, publicUrl } = await uploadToBucket(productId, file)
+): Promise<string> {
+  const { publicUrl } = await uploadToBucket(folder, file)
+  return publicUrl
+}
 
+/** Borra del bucket si la URL es nuestra; las URLs externas se ignoran. */
+export async function removePublicImage(url: string): Promise<void> {
+  const path = storagePathFromUrl(url, PRODUCT_IMAGES_BUCKET)
+  if (!path) return
+  await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([path])
+}
+
+type ProductImageOptions = {
+  variantId?: string | null
+  isPrimary?: boolean
+}
+
+/**
+ * Inserta una fila en product_images. La primera imagen del producto queda
+ * principal por defecto; si se pide isPrimary con otras ya existentes, se
+ * limpia la marca anterior para no tener dos principales.
+ */
+async function insertProductImageRow(
+  productId: string,
+  url: string,
+  options: ProductImageOptions = {},
+): Promise<void> {
   const { data: last } = await supabase
     .from('product_images')
     .select('sort_order')
@@ -489,23 +513,60 @@ export async function uploadProductImage(
     .select('id', { count: 'exact', head: true })
     .eq('product_id', productId)
 
+  // Primera imagen del producto = principal, aunque no marquen el checkbox.
+  // `??` no sirve: el panel siempre manda `isPrimary: false` si está desmarcado.
+  const isPrimary = Boolean(options.isPrimary) || (count ?? 0) === 0
+
+  if (isPrimary && (count ?? 0) > 0) {
+    const { error: clearError } = await supabase
+      .from('product_images')
+      .update({ is_primary: false })
+      .eq('product_id', productId)
+
+    if (clearError) throw new Error(readableDbError(clearError))
+  }
+
   const row: TablesInsert<'product_images'> = {
     product_id: productId,
     variant_id: options.variantId ?? null,
-    url: publicUrl,
-    // La primera imagen del producto es la principal por defecto.
-    is_primary: options.isPrimary ?? (count ?? 0) === 0,
+    url,
+    is_primary: isPrimary,
     // Siguiente al mayor existente: contar filas repetiria orden tras borrados.
     sort_order: last ? last.sort_order + 1 : 0,
   }
 
   const { error } = await supabase.from('product_images').insert(row)
+  if (error) throw new Error(readableDbError(error))
+}
 
-  if (error) {
+/** Sube la imagen de un producto y registra su fila en product_images. */
+export async function uploadProductImage(
+  productId: string,
+  file: File,
+  options: ProductImageOptions = {},
+): Promise<void> {
+  const { path, publicUrl } = await uploadToBucket(productId, file)
+
+  try {
+    await insertProductImageRow(productId, publicUrl, options)
+  } catch (cause) {
     // Si la fila no entra, el archivo subido seria basura en el bucket.
     await supabase.storage.from(PRODUCT_IMAGES_BUCKET).remove([path])
-    throw new Error(readableDbError(error))
+    throw cause
   }
+}
+
+/**
+ * Guarda una URL externa en product_images sin descargar ni subir al bucket.
+ * Sirve para pegar enlaces de imagenes ya alojadas en otro sitio.
+ */
+export async function addProductImageFromUrl(
+  productId: string,
+  rawUrl: string,
+  options: ProductImageOptions = {},
+): Promise<void> {
+  const url = parseOrThrow(productImageUrlSchema, rawUrl)
+  await insertProductImageRow(productId, url, options)
 }
 
 export async function setPrimaryImage(

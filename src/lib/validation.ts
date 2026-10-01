@@ -201,6 +201,41 @@ const httpsUrlOrEmpty = z
     'Debe ser una dirección completa que empiece con https://',
   )
 
+/** URL https obligatoria para pegar una imagen de producto sin subir archivo. */
+export const productImageUrlSchema = z
+  .string()
+  .transform((v) => v.trim().slice(0, 600))
+  .refine((v) => v.length > 0, 'Pega la dirección de la imagen.')
+  .refine(
+    (v) => isHttpsUrl(v),
+    'Debe ser una dirección completa que empiece con https://',
+  )
+
+const isoDate = z
+  .string()
+  .transform((v) => v.trim())
+  .refine((v) => /^\d{4}-\d{2}-\d{2}$/.test(v), 'Elige una fecha válida.')
+
+/** Combo/promoción temporal. El precio es texto libre, no un número de inventario. */
+export const promotionFormSchema = z
+  .object({
+    title: z
+      .string()
+      .transform((v) => cleanSingleLine(v, 120))
+      .refine((v) => v.length >= 2, 'El título es obligatorio.'),
+    description: optionalParagraph(280),
+    price_label: optionalLine(40),
+    image_url: productImageUrlSchema,
+    start_date: isoDate,
+    end_date: isoDate,
+  })
+  .refine((value) => value.end_date >= value.start_date, {
+    path: ['end_date'],
+    message: 'La fecha de fin no puede ser anterior al inicio.',
+  })
+
+export type PromotionFormValues = z.infer<typeof promotionFormSchema>
+
 /**
  * Zod ejecuta todos los refine aunque uno anterior haya fallado, asi que este
  * no puede asumir que la URL ya es valida: new URL() lanzaria un TypeError.

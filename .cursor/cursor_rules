@@ -21,6 +21,7 @@
 - `order_items` (id, order_id, variant_id, product_name, variant_label, quantity, unit_price, subtotal)
 - `site_settings` (key text PK, value jsonb)
 - `admins` (id uuid FK auth.users, name, created_at)
+- `promotions` (id uuid, title, description, price_label texto libre, image_url, start_date, end_date — vigente si hoy Quito está entre las dos fechas)
 
 Claves: products.origin_id y product_variants.origin_id vienen del Excel del sistema de facturación (nunca usar barcode como llave).
 
@@ -158,6 +159,7 @@ supabase/
 /admin/imagenes ............ Upload de imágenes
 /admin/ajustes ............. Editar site_settings
 /admin/importar ............ Upload JSON del normalizador
+/admin/promociones ......... Combos temporales (activas / expiradas)
 /admin/cotizaciones ........ Historial (purgado automático a 15 días)
 /admin/estadisticas ........ Productos solicitados, categorías buscadas
 ```

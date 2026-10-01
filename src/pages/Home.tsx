@@ -3,6 +3,7 @@ import { ProductCardSkeleton } from '@/components/States'
 import { SearchBar } from '@/features/catalog/SearchBar'
 import { ProductGrid } from '@/features/catalog/ProductGrid'
 import { CategoryNav } from '@/features/catalog/CategoryNav'
+import { HomePromotions } from '@/features/promotions/HomePromotions'
 import { WhatsAppButton } from '@/features/whatsapp/WhatsAppButton'
 import { generalInquiryMessage } from '@/features/whatsapp/buildMessage'
 import { useSettings } from '@/features/settings/SettingsProvider'
@@ -84,6 +85,8 @@ export function HomePage() {
           </p>
         </div>
       </section>
+
+      <HomePromotions />
 
       <HighlightSection
         id="ofertas"

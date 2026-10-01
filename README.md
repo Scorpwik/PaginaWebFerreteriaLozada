@@ -16,8 +16,9 @@ confiable + proveedor profesional.
 ### Tienda pública
 
 - **Inicio**: portada con foto distinta para celular y computador, buscador
-  ("¿Qué necesitas para tu obra?"), secciones de **Ofertas** y
-  **Más vendidos**, categorías y bloque de asesoría por WhatsApp.
+  ("¿Qué necesitas para tu obra?"), **Promociones** (combos temporales, solo
+  si hay alguna vigente), secciones de **Ofertas** y **Más vendidos**,
+  categorías y bloque de asesoría por WhatsApp.
 - **Catálogo** (`/catalogo`): grid paginado, filtros por categoría,
   disponibilidad, ofertas y más vendidos. El estado vive en la URL, así que
   una búsqueda se puede compartir por WhatsApp tal cual.
@@ -44,6 +45,11 @@ confiable + proveedor profesional.
 - Login con Supabase Auth (solo usuarios registrados en la tabla `admins`).
 - **Resumen**: cotizaciones, monto cotizado, productos más pedidos, etc.
 - **Productos**: CRUD + variantes, marcar oferta / más vendido, subir imágenes.
+- **Combos y promociones**: ofertas temporales (imagen de Illustrator, título,
+  precio en texto, fecha de fin). Aparecen en el inicio mientras estén vigentes;
+  al vencer se archivan en la pestaña Expiradas (se pueden reactivar). El
+  cliente pide el combo por WhatsApp y enseña la imagen en el local; no van al
+  carrito.
 - **Categorías**: CRUD con subcategorías (máx. 2 niveles).
 - **Cotizaciones**: historial con PDF firmado (se purgan solas a los 15 días).
 - **Ajustes del sitio**: todo el contenido editable sin tocar código
@@ -147,6 +153,8 @@ src/
   components/    # Primitivas UI (Button, Modal, Skeleton, Badge…)
   data/          # Acceso a datos (todo pasa por aquí, nunca .from() en UI)
     adminImport.ts  # Lógica del importador JSON
+    adminPromotions.ts # CRUD de combos (admin)
+    promotions.ts   # Promociones vigentes para el Home
     orders.ts       # createQuote → Edge Function
   features/
     about/       # Carrusel de fotos + visor (lightbox)
@@ -154,6 +162,7 @@ src/
     auth/        # AuthProvider, RequireAdmin
     cart/        # CartProvider + lógica pura (cart.ts)
     catalog/     # Tarjetas, grid, filtros, buscador
+    promotions/  # Sección de combos del Home
     quote/       # Flujo de cotización
     whatsapp/    # Botón + armado del mensaje
     settings/    # Proveedor de site_settings

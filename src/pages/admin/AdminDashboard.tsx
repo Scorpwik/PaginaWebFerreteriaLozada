@@ -96,6 +96,12 @@ export default function AdminDashboard() {
               Editar productos
             </Link>
             <Link
+              to="/admin/promociones"
+              className="text-brand-700 font-semibold underline"
+            >
+              Combos y promociones
+            </Link>
+            <Link
               to="/admin/importar"
               className="text-brand-700 font-semibold underline"
             >

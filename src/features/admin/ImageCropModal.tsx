@@ -160,13 +160,25 @@ export function ImageCropModal({
             </div>
           ) : null}
 
-          {preset === 'product' || preset === 'logo' ? (
+          {preset === 'product' || preset === 'logo' || preset === 'promo' ? (
             <div className="mt-5">
               <p className="text-ink-800 text-sm font-bold">
-                {preset === 'logo' ? 'Vista del logo' : 'Vista de tarjeta'}
+                {preset === 'logo'
+                  ? 'Vista del logo'
+                  : preset === 'promo'
+                    ? 'Vista de la tarjeta de combo'
+                    : 'Vista de tarjeta'}
               </p>
-              <div className="border-ink-100 mt-2 w-36 overflow-hidden rounded-lg border bg-white shadow-sm">
-                <div className="aspect-square bg-ink-50">
+              <div
+                className={`border-ink-100 mt-2 overflow-hidden rounded-lg border bg-white shadow-sm ${
+                  preset === 'promo' ? 'w-40' : 'w-36'
+                }`}
+              >
+                <div
+                  className={
+                    preset === 'promo' ? 'aspect-[4/5] bg-ink-50' : 'aspect-square bg-ink-50'
+                  }
+                >
                   {previewUrl ? (
                     <img
                       src={previewUrl}
@@ -178,6 +190,11 @@ export function ImageCropModal({
                 {preset === 'product' ? (
                   <p className="text-ink-700 truncate px-2 py-1.5 text-xs font-semibold">
                     Tu producto
+                  </p>
+                ) : null}
+                {preset === 'promo' ? (
+                  <p className="text-ink-700 truncate px-2 py-1.5 text-xs font-semibold">
+                    Combo
                   </p>
                 ) : null}
               </div>

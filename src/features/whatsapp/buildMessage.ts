@@ -23,6 +23,10 @@ export function productInquiryMessage(
   return `Hola, quiero consultar la disponibilidad y el precio de: ${what}.`
 }
 
+export function promotionInquiryMessage(title: string): string {
+  return `Hola, quiero más información sobre la promoción ${title}.`
+}
+
 export function generalInquiryMessage(): string {
   return 'Hola, necesito ayuda con un pedido para mi obra.'
 }

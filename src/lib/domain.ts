@@ -29,6 +29,18 @@ export type ProductImage = {
   variant_id: string | null
 }
 
+/** Combo temporal. No es un producto: no hay stock, variantes ni carrito. */
+export type Promotion = {
+  id: string
+  title: string
+  description: string | null
+  priceLabel: string | null
+  imageUrl: string
+  startDate: string
+  endDate: string
+  createdAt: string
+}
+
 export type Category = {
   id: string
   name: string
@@ -198,10 +210,15 @@ export function toCategory(row: Tables<'categories'>): Category {
   }
 }
 
+/** Principal primero, luego el orden de carga. */
+export function sortProductImages(images: ProductImage[]): ProductImage[] {
+  return [...images].sort(
+    (a, b) =>
+      Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order,
+  )
+}
+
 /** La imagen principal: la marcada is_primary, si no la de menor sort_order. */
 export function pickPrimaryImage(images: ProductImage[]): string | null {
-  if (images.length === 0) return null
-  const primary = images.find((image) => image.is_primary)
-  if (primary) return primary.url
-  return [...images].sort((a, b) => a.sort_order - b.sort_order)[0]?.url ?? null
+  return sortProductImages(images)[0]?.url ?? null
 }

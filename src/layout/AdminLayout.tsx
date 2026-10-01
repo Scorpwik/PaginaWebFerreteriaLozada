@@ -7,6 +7,7 @@ const links = [
   { to: '/admin', label: 'Resumen', end: true },
   { to: '/admin/productos', label: 'Productos', end: false },
   { to: '/admin/categorias', label: 'Categorías', end: false },
+  { to: '/admin/promociones', label: 'Combos y promociones', end: false },
   { to: '/admin/cotizaciones', label: 'Cotizaciones', end: false },
   { to: '/admin/importar', label: 'Importar catálogo', end: false },
   { to: '/admin/ajustes', label: 'Ajustes del sitio', end: false },

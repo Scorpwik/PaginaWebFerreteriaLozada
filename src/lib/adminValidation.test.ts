@@ -8,6 +8,8 @@ import {
   parseOrThrow,
   processSettingsSchema,
   productFormSchema,
+  productImageUrlSchema,
+  promotionFormSchema,
   scheduleSettingsSchema,
   socialSettingsSchema,
   validateFields,
@@ -225,6 +227,65 @@ describe('variantPatchSchema', () => {
   it('rechaza disponibilidad inventada y parches vacios', () => {
     expect(variantPatchSchema.safeParse({ availability: 'quizas' }).success).toBe(false)
     expect(variantPatchSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+describe('productImageUrlSchema', () => {
+  it('acepta una URL https y recorta espacios', () => {
+    const result = productImageUrlSchema.safeParse(
+      '  https://cdn.example.com/tornillo.jpg  ',
+    )
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data).toBe('https://cdn.example.com/tornillo.jpg')
+    }
+  })
+
+  it('rechaza vacio, http plano y esquemas peligrosos', () => {
+    for (const url of [
+      '',
+      '   ',
+      'http://cdn.example.com/a.jpg',
+      'javascript:alert(1)',
+      'data:image/png;base64,xxx',
+      'cdn.example.com/a.jpg',
+    ]) {
+      expect(productImageUrlSchema.safeParse(url).success, url).toBe(false)
+    }
+  })
+})
+
+describe('promotionFormSchema', () => {
+  const base = {
+    title: 'Combo maestro',
+    description: 'Taladro + brocas',
+    price_label: 'Desde $45',
+    image_url: 'https://cdn.example.com/combo.jpg',
+    start_date: '2026-10-01',
+    end_date: '2026-10-08',
+  }
+
+  it('acepta un combo con precio en texto libre', () => {
+    const result = validateFields(promotionFormSchema, base)
+    expect(result.ok).toBe(true)
+  })
+
+  it('rechaza si la fecha de fin es anterior al inicio', () => {
+    const result = validateFields(promotionFormSchema, {
+      ...base,
+      end_date: '2026-09-30',
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.end_date).toBeDefined()
+  })
+
+  it('exige titulo e imagen https', () => {
+    const result = validateFields(promotionFormSchema, {
+      ...base,
+      title: ' ',
+      image_url: 'http://cdn.example.com/combo.jpg',
+    })
+    expect(result.ok).toBe(false)
   })
 })
 

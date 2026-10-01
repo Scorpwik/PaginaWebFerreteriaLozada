@@ -88,3 +88,35 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
 }
+
+const QUITO_TZ = 'America/Guayaquil'
+
+/** Calendario de Quito (no el del servidor en us-west-2). */
+export function todayInQuito(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: QUITO_TZ }).format(
+    new Date(),
+  )
+}
+
+export function addDaysToIsoDate(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1, day + days))
+  const y = next.getUTCFullYear()
+  const m = String(next.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(next.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+export function daysUntilDate(endDate: string, today = todayInQuito()): number {
+  const [ey, em, ed] = endDate.split('-').map(Number)
+  const [ty, tm, td] = today.split('-').map(Number)
+  return Math.round(
+    (Date.UTC(ey, em - 1, ed) - Date.UTC(ty, tm - 1, td)) / 86_400_000,
+  )
+}
+
+export function remainingDaysLabel(days: number): string {
+  if (days <= 0) return 'Último día'
+  if (days === 1) return 'Queda 1 día'
+  return `Quedan ${days} días`
+}

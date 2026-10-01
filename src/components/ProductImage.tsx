@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const PLACEHOLDER = '/placeholder-tool.svg'
 
@@ -20,6 +20,11 @@ export function ProductImage({
   sizes?: string
 }) {
   const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    setFailed(false)
+  }, [url])
+
   const source = !url || failed ? PLACEHOLDER : url
   const isPlaceholder = source === PLACEHOLDER
 

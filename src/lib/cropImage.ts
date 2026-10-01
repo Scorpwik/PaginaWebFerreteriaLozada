@@ -12,6 +12,7 @@ export type CropPreset =
   | 'gallery'
   | 'logo'
   | 'og'
+  | 'promo'
   /** @deprecated usar heroDesktop */
   | 'hero'
 
@@ -85,6 +86,14 @@ export const CROP_PRESETS: Record<CropPreset, CropPresetConfig> = {
     hint: 'Así se ve la miniatura al compartir el enlace por WhatsApp.',
     recommend: '1200 × 630 px',
   },
+  promo: {
+    id: 'promo',
+    label: 'Combo / promoción',
+    aspect: 4 / 5,
+    maxEdge: 1400,
+    hint: 'Vertical, como se ve en la tarjeta del Home y en el celular en el local.',
+    recommend: '1080 × 1350 px (4:5)',
+  },
 }
 
 /** Guía corta para el admin: medidas al recortar fuera del sitio. */
@@ -93,6 +102,7 @@ export const IMAGE_SIZE_GUIDE = [
   { use: 'Portada (celular)', size: '1080 × 1350 px', format: 'JPG o WebP' },
   { use: 'Fotos Nosotros (carrusel)', size: '1600 × 1000 px', format: 'JPG o WebP' },
   { use: 'Producto / catálogo', size: '1200 × 1200 px', format: 'JPG o WebP' },
+  { use: 'Combo / promoción', size: '1080 × 1350 px', format: 'JPG o WebP' },
   { use: 'Logo', size: '800 × 800 px', format: 'PNG o WebP' },
   { use: 'Compartir en redes', size: '1200 × 630 px', format: 'JPG' },
 ] as const

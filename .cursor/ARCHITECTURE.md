@@ -160,6 +160,16 @@ product_images
   ├─ is_primary bool              (true = se muestra en tarjeta del catálogo)
   └─ sort_order int
 
+promotions (combos temporales, independientes del catálogo)
+  ├─ id uuid PK
+  ├─ title text
+  ├─ description text             (opcional)
+  ├─ price_label text             (texto libre: "$45", "2x1" — no es precio de inventario)
+  ├─ image_url text
+  ├─ start_date date              (default: hoy en America/Guayaquil)
+  ├─ end_date date                (vigente mientras hoy ≤ end_date)
+  └─ created_at, updated_at
+
 orders (cotizaciones)
   ├─ id uuid PK
   ├─ quote_number text UNIQUE     (ej. "COT-000001")
@@ -210,6 +220,9 @@ categories:
 
 order_items:
   └─ idx_order_items_order (order_id)            — líneas de una cotización
+
+promotions:
+  └─ idx_promotions_dates (start_date, end_date) — Home y panel filtran por vigencia
 ```
 
 ### Row Level Security (RLS)
@@ -227,6 +240,9 @@ product_variants        → anon + authenticated: SELECT
                         → authenticated + admin: ALL
 
 product_images          → anon + authenticated: SELECT
+                        → authenticated + admin: ALL
+
+promotions              → anon + authenticated: SELECT
                         → authenticated + admin: ALL
 
 site_settings           → anon + authenticated: SELECT
@@ -254,7 +270,7 @@ Usuario (navegador)
   ↓ GET / (Home)
   → Fetch categories (lectura pública, RLS permite)
   → Fetch products (paginados, 24 por página) + variantes + imagen primaria
-  → Render Home (cinta de productos, ofertas, más vendidos)
+  → Render Home (hero, buscador, promociones vigentes si hay, ofertas, más vendidos)
   ↓ Click "Ver catálogo" o "Buscar"
   → GET /catalogo?q=tornillo
   → Fetch products con name ILIKE '%tornillo%' (trigram, rápido)
@@ -314,6 +330,12 @@ Usuario admin (papá/mamá/Joshua) logueado con Supabase Auth
       2. Editar variantes: medida, precio, disponibilidad
       3. Subir imagen (múltiples): producto o variante específica
   → El UPDATE es directo a Supabase (RLS permite porque user está en admins)
+  
+  ↓ Subpath /admin/promociones
+  → Lista activas (end_date ≥ hoy Quito) y pestaña Expiradas (archivo, no se borran solas)
+  → Formulario: título, descripción, price_label (texto), imagen (archivo o URL), fecha de fin
+  → Atajos +3/+7/+15/+30 días; Reactivar reabre el form con una fecha nueva
+  → No toca products ni el carrito
   
   ↓ Subpath /admin/ajustes
   → Fetch site_settings
@@ -397,7 +419,7 @@ Hooks:
 
 **Estado: ✅ CÓDIGO COMPLETO (falta probar contra la base real: RLS, buckets, PDF firmado)**
 
-Rutas: `/admin/login`, `/admin`, `/admin/productos[/nuevo|/:id]`, `/admin/categorias`, `/admin/ajustes`, `/admin/cotizaciones`, `/admin/importar`. Estadísticas viven en `/admin` (Dashboard).
+Rutas: `/admin/login`, `/admin`, `/admin/productos[/nuevo|/:id]`, `/admin/categorias`, `/admin/promociones`, `/admin/ajustes`, `/admin/cotizaciones`, `/admin/importar`. Estadísticas viven en `/admin` (Dashboard).
 
 Componentes:
 - RequireAdmin (wrapper para rutas admin)
@@ -413,6 +435,16 @@ Lógica:
 - Supabase Auth login
 - Verificación de tabla admins
 - CRUD directo a Supabase (RLS protege)
+
+### Fase 4.5: Combos y promociones
+
+**Estado: ✅ IMPLEMENTADA**
+
+- Tabla `promotions` (migración `20261001015536_promotions.sql`), independiente del catálogo
+- Home: sección **Promociones** después del buscador y antes de Ofertas; solo si hay vigentes (`start_date ≤ hoy ≤ end_date`, calendario de Quito)
+- Card: imagen, título, `price_label`, badge de días, **Solicitar combo** (WhatsApp con texto) y aviso de acercarse con la imagen
+- Admin `/admin/promociones`: activas / expiradas (archivo), crear/editar, imagen archivo o URL, atajos de fecha, reactivar
+- Datos: `src/data/promotions.ts` (público) y `src/data/adminPromotions.ts` (CRUD)
 
 ### Fase 5: Importador JSON
 
