@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AvailabilityBadge } from '@/components/AvailabilityBadge'
 import { ProductImage } from '@/components/ProductImage'
+import { useCart } from '@/features/cart/CartProvider'
 import { catalogAvailabilityBadge } from '@/lib/domain'
 import { formatPrice } from '@/lib/format'
 import { productPath } from '@/lib/routes'
@@ -36,11 +38,35 @@ function PriceLabel({ product }: { product: ProductCardData }) {
 export function ProductCard({
   product,
   eager = false,
+  /** En carruseles estrechos, el botón Agregar sigue disponible. */
+  compact = false,
 }: {
   product: ProductCardData
   eager?: boolean
+  compact?: boolean
 }) {
+  const { add } = useCart()
+  const [added, setAdded] = useState(false)
   const badge = catalogAvailabilityBadge(product.variants)
+  const canQuickAdd = Boolean(product.quickAdd)
+
+  const handleQuickAdd = () => {
+    const quick = product.quickAdd
+    if (!quick) return
+    add({
+      variantId: quick.variantId,
+      productId: product.id,
+      productOriginId: product.origin_id,
+      productName: product.name,
+      variantLabel: quick.variantLabel,
+      saleUnit: quick.saleUnit,
+      unitPrice: quick.unitPrice,
+      quantity: 1,
+      imageUrl: product.imageUrl,
+    })
+    setAdded(true)
+    window.setTimeout(() => setAdded(false), 1600)
+  }
 
   return (
     <article
@@ -62,7 +88,7 @@ export function ProductCard({
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className={`flex flex-1 flex-col gap-2 ${compact ? 'p-3' : 'p-4'}`}>
         {product.categoryName ? (
           <p className="text-ink-500 text-xs font-semibold uppercase tracking-wide">
             {product.categoryName}
@@ -70,7 +96,7 @@ export function ProductCard({
         ) : null}
 
         <h3 className="text-ink-900 text-sm font-semibold leading-snug">
-          {/* El enlace cubre la tarjeta entera: en movil todo el bloque es tocable. */}
+          {/* El enlace cubre la tarjeta entera; el botón Agregar va encima (z-10). */}
           <Link to={productPath(product)} className="after:absolute after:inset-0">
             {product.name}
           </Link>
@@ -90,6 +116,20 @@ export function ProductCard({
           <p className="text-ink-500 text-xs">
             {product.variantCount} opciones disponibles
           </p>
+        ) : null}
+
+        {canQuickAdd ? (
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            className={`relative z-10 mt-1 min-h-10 w-full rounded-lg text-sm font-bold transition-colors ${
+              added
+                ? 'bg-emerald-700 text-white'
+                : 'bg-brand-700 hover:bg-brand-800 active:bg-brand-900 text-white'
+            }`}
+          >
+            {added ? 'Añadido' : 'Agregar'}
+          </button>
         ) : null}
       </div>
     </article>

@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import {
   aggregateAvailability,
+  canAddToCart,
   pickPrimaryImage,
   priceRange,
   toVariant,
@@ -66,9 +67,11 @@ function variantCardLabel(variant: CardRow['product_variants'][number]): string 
 
 function toCard(row: CardRow): ProductCard {
   const variants = row.product_variants.map((variant) => ({
+    id: variant.id,
     price: Number(variant.price ?? 0),
     availability: normalizeAvailability(variant.availability),
     label: variantCardLabel(variant),
+    sale_unit: variant.sale_unit,
   }))
   const { from, to } = priceRange(variants)
   const images: ProductImage[] = row.product_images.map((image) => ({
@@ -78,6 +81,17 @@ function toCard(row: CardRow): ProductCard {
     sort_order: image.sort_order,
     variant_id: image.variant_id,
   }))
+
+  const sole = variants.length === 1 ? variants[0] : null
+  const quickAdd =
+    sole && canAddToCart(sole)
+      ? {
+          variantId: sole.id,
+          unitPrice: sole.price,
+          saleUnit: sole.sale_unit,
+          variantLabel: sole.label && sole.label !== 'opción' ? sole.label : null,
+        }
+      : null
 
   return {
     id: row.id,
@@ -94,6 +108,7 @@ function toCard(row: CardRow): ProductCard {
       availability,
     })),
     variantCount: row.product_variants.length,
+    quickAdd,
     isOffer: row.is_offer,
     isBestseller: row.is_bestseller,
   }
@@ -241,6 +256,26 @@ export async function fetchMarqueeProducts(limit = 16): Promise<ProductCard[]> {
 
   if (error) throw error
   return (data as unknown as CardRow[]).map(toCard)
+}
+
+/** Sugerencias del carrito: mezcla de ofertas y mas vendidos.
+ * Solo familias (padres) que no estén completamente agotadas. */
+export async function fetchCartSuggestions(limit = 16): Promise<ProductCard[]> {
+  // Pedimos de más por si al filtrar agotados nos quedamos cortos.
+  const { data, error } = await supabase
+    .from('products')
+    .select(CARD_SELECT)
+    .or('is_bestseller.eq.true,is_offer.eq.true')
+    .order('is_bestseller', { ascending: false })
+    .order('is_offer', { ascending: false })
+    .order('updated_at', { ascending: false })
+    .limit(Math.min(limit * 2, 48))
+
+  if (error) throw error
+  return (data as unknown as CardRow[])
+    .map(toCard)
+    .filter((product) => product.availability !== 'agotado')
+    .slice(0, limit)
 }
 
 const DETAIL_SELECT = `

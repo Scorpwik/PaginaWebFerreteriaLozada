@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ProductGrid } from './ProductGrid'
 import { SearchBar } from './SearchBar'
 import { Filters } from './Filters'
-import { Pagination } from '@/components/Pagination'
-import { EmptyState, ErrorState } from '@/components/States'
-import { ButtonLink } from '@/components/Button'
+import { EmptyState, ErrorState, Spinner } from '@/components/States'
+import { Button, ButtonLink } from '@/components/Button'
 import {
   fetchCatalogPage,
   fetchCatalogPriceCeiling,
   PAGE_SIZE,
 } from '@/data/products'
-import { useAsync } from '@/lib/useAsync'
 import { isAvailability } from '@/lib/format'
+import type { ProductCard } from '@/lib/domain'
 
 function parsePriceParam(raw: string | null): number | null {
   if (raw == null || raw === '') return null
@@ -21,9 +20,9 @@ function parsePriceParam(raw: string | null): number | null {
 }
 
 /**
- * Listado paginado reutilizado por /catalogo y por las paginas de categoria.
- * Todo el estado del filtro vive en la URL, asi que una busqueda se puede
- * compartir por WhatsApp tal cual.
+ * Listado del catálogo con "Cargar más" (no scroll infinito):
+ * en celulares de obra es más predecible y barato que un IntersectionObserver
+ * disparando páginas al pasar el pulgar.
  */
 export function CatalogBrowser({
   categoryIds = null,
@@ -42,9 +41,26 @@ export function CatalogBrowser({
   const onlyBestsellers = params.get('mas-vendidos') === '1'
   const priceMin = parsePriceParam(params.get('pmin'))
   const priceMax = parsePriceParam(params.get('pmax'))
-  const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
 
   const categoryKey = categoryIds?.join(',') ?? ''
+  const filterKey = [
+    search,
+    categoryKey,
+    availability ?? '',
+    onlyOffers ? '1' : '0',
+    onlyBestsellers ? '1' : '0',
+    priceMin ?? '',
+    priceMax ?? '',
+  ].join('|')
+
+  const [items, setItems] = useState<ProductCard[]>([])
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+  const requestId = useRef(0)
 
   useEffect(() => {
     let cancelled = false
@@ -60,30 +76,62 @@ export function CatalogBrowser({
     }
   }, [])
 
-  const { data, loading, error, reload } = useAsync(
-    () =>
-      fetchCatalogPage({
-        search,
-        categoryIds,
-        availability,
-        onlyOffers,
-        onlyBestsellers,
-        priceMin,
-        priceMax,
-        page,
-        pageSize: PAGE_SIZE,
-      }),
+  const loadPage = useCallback(
+    async (nextPage: number, append: boolean) => {
+      const id = ++requestId.current
+      if (append) setLoadingMore(true)
+      else {
+        setLoading(true)
+        setError(null)
+      }
+
+      try {
+        const result = await fetchCatalogPage({
+          search,
+          categoryIds,
+          availability,
+          onlyOffers,
+          onlyBestsellers,
+          priceMin,
+          priceMax,
+          page: nextPage,
+          pageSize: PAGE_SIZE,
+        })
+        if (id !== requestId.current) return
+
+        setItems((current) =>
+          append ? [...current, ...result.items] : result.items,
+        )
+        setPage(result.page)
+        setTotal(result.total)
+        setTotalPages(result.totalPages)
+      } catch (cause) {
+        if (id !== requestId.current) return
+        setError(
+          cause instanceof Error ? cause : new Error('No se pudo cargar el catálogo'),
+        )
+        if (!append) setItems([])
+      } finally {
+        if (id === requestId.current) {
+          setLoading(false)
+          setLoadingMore(false)
+        }
+      }
+    },
     [
       search,
-      categoryKey,
+      categoryIds,
       availability,
       onlyOffers,
       onlyBestsellers,
       priceMin,
       priceMax,
-      page,
     ],
   )
+
+  useEffect(() => {
+    void loadPage(1, false)
+  }, [filterKey, loadPage])
 
   const update = useCallback(
     (changes: Record<string, string | null>) => {
@@ -92,22 +140,22 @@ export function CatalogBrowser({
         if (value === null || value === '') next.delete(key)
         else next.set(key, value)
       }
-      // Cualquier cambio de filtro vuelve a la primera pagina.
-      if (!('page' in changes)) next.delete('page')
+      next.delete('page')
       setParams(next, { replace: true })
     },
     [params, setParams],
   )
 
-  if (error) return <ErrorState error={error} onRetry={reload} />
+  if (error && items.length === 0) {
+    return <ErrorState error={error} onRetry={() => void loadPage(1, false)} />
+  }
 
-  const products = data?.items ?? []
-  const total = data?.total ?? 0
+  const hasMore = page < totalPages
+  const shown = items.length
 
   return (
     <div>
       <div className="mb-5">
-        {/* key fuerza remount cuando cambia ?q= desde el Home u otra pagina. */}
         <SearchBar key={search} id="buscador-catalogo" initialValue={search} />
       </div>
 
@@ -163,14 +211,16 @@ export function CatalogBrowser({
           <p className="text-ink-500 ml-auto text-sm" aria-live="polite">
             {total === 0
               ? 'Sin resultados'
-              : `${total} ${total === 1 ? 'producto' : 'productos'}`}
+              : shown < total
+                ? `${shown} de ${total} productos`
+                : `${total} ${total === 1 ? 'producto' : 'productos'}`}
           </p>
         ) : null}
       </div>
 
       {loading ? (
         <ProductGrid products={[]} loading skeletonCount={PAGE_SIZE / 2} />
-      ) : products.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState
           title="No encontramos ese producto"
           description={
@@ -186,12 +236,23 @@ export function CatalogBrowser({
         />
       ) : (
         <>
-          <ProductGrid products={products} />
-          <Pagination
-            page={page}
-            totalPages={data?.totalPages ?? 1}
-            onChange={(next) => update({ page: String(next) })}
-          />
+          <ProductGrid products={items} />
+
+          {hasMore ? (
+            <div className="mt-10 flex flex-col items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="min-h-12 min-w-[12rem]"
+                disabled={loadingMore}
+                onClick={() => void loadPage(page + 1, true)}
+              >
+                {loadingMore ? 'Cargando…' : 'Cargar más'}
+              </Button>
+              {loadingMore ? <Spinner label="Cargando más productos" /> : null}
+            </div>
+          ) : null}
         </>
       )}
     </div>

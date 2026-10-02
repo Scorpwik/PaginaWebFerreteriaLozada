@@ -57,6 +57,14 @@ export type CardVariantAvailability = {
   availability: Availability
 }
 
+/** Datos para agregar desde la tarjeta cuando hay una sola variante vendible. */
+export type ProductQuickAdd = {
+  variantId: string
+  unitPrice: number
+  saleUnit: string | null
+  variantLabel: string | null
+}
+
 /** Lo minimo que la tarjeta del catalogo necesita para pintarse. */
 export type ProductCard = {
   id: string
@@ -71,6 +79,8 @@ export type ProductCard = {
   /** Detalle por variante para badges especificos ("Agotado: 6x2"). */
   variants: CardVariantAvailability[]
   variantCount: number
+  /** Presente solo si hay exactamente 1 variante y se puede vender. */
+  quickAdd: ProductQuickAdd | null
   isOffer: boolean
   isBestseller: boolean
 }

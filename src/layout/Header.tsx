@@ -3,8 +3,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { Logo } from './Logo'
 import { MobileNav } from './MobileNav'
 import { useSettings } from '@/features/settings/SettingsProvider'
-import { WhatsAppButton } from '@/features/whatsapp/WhatsAppButton'
-import { generalInquiryMessage } from '@/features/whatsapp/buildMessage'
 import type { ReactNode } from 'react'
 
 const links = [
@@ -14,40 +12,16 @@ const links = [
   { to: '/nosotros', label: 'Sobre nosotros' },
 ]
 
-const HERO_WHATSAPP_ID = 'hero-whatsapp-cta'
-
 /**
- * `actions` es el punto de extension de la cabecera: en el catalogo de solo
- * lectura solo lleva WhatsApp, y el carrito se suma ahi cuando existe.
+ * `actions` es el punto de extension de la cabecera: el carrito se suma ahi.
+ * El contacto por WhatsApp vive en la burbuja flotante global.
  */
 export function Header({ actions }: { actions?: ReactNode }) {
   const { whatsappNumber } = useSettings()
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
-  const [showHeaderWhatsApp, setShowHeaderWhatsApp] = useState(
-    () => (typeof window === 'undefined' ? true : window.location.pathname !== '/'),
-  )
 
   useEffect(() => setMenuOpen(false), [location.pathname])
-
-  // En Home el CTA verde ya esta junto a "Ver catalogo". El del header solo
-  // aparece cuando ese boton sale de vista, para no duplicar.
-  useEffect(() => {
-    const heroCta = document.getElementById(HERO_WHATSAPP_ID)
-    if (!heroCta) {
-      setShowHeaderWhatsApp(true)
-      return
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowHeaderWhatsApp(!entry.isIntersecting)
-      },
-      { threshold: 0, rootMargin: '-72px 0px 0px 0px' },
-    )
-    observer.observe(heroCta)
-    return () => observer.disconnect()
-  }, [location.pathname])
 
   return (
     <header className="border-ink-100 sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
@@ -78,16 +52,6 @@ export function Header({ actions }: { actions?: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {showHeaderWhatsApp ? (
-              <WhatsAppButton
-                message={generalInquiryMessage()}
-                size="sm"
-                className="header-wa-in hidden sm:inline-flex"
-              >
-                Pedir por WhatsApp
-              </WhatsAppButton>
-            ) : null}
-
             {actions}
 
             <button

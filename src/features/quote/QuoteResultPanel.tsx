@@ -145,6 +145,20 @@ export function QuoteResultPanel({ result }: { result: QuoteResult }) {
           2. Envíanos el pedido
         </p>
 
+        <div
+          role="note"
+          className="border-amber-200 bg-amber-50 text-ink-800 rounded-xl border px-4 py-3 text-sm leading-relaxed"
+        >
+          <p className="font-bold text-amber-950">
+            Todo se coordina por WhatsApp
+          </p>
+          <p className="mt-1.5">
+            Esta cotización es referencial. El pago, la entrega — incluyendo
+            envíos a otras provincias — y cualquier coordinación especial se
+            acuerdan directamente por WhatsApp con Ferretería Lozada.
+          </p>
+        </div>
+
         <ButtonAnchor
           href={whatsappUrl(settings.whatsappNumber, message)}
           target="_blank"
@@ -158,8 +172,8 @@ export function QuoteResultPanel({ result }: { result: QuoteResult }) {
         </ButtonAnchor>
 
         <p className="text-ink-500 text-center text-xs leading-relaxed">
-          Te responderemos confirmando disponibilidad y coordinando la entrega.
-          Los precios son referenciales por {settings.quoteValidityDays} días.
+          Te responderemos confirmando disponibilidad. Los precios son
+          referenciales por {settings.quoteValidityDays} días.
         </p>
       </div>
     </div>

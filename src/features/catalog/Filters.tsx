@@ -69,6 +69,7 @@ export function Filters({ value, priceCeiling, onChange }: Props) {
     currentMin,
     currentMax,
   ])
+  const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
     setDraftRange([
@@ -204,11 +205,13 @@ export function Filters({ value, priceCeiling, onChange }: Props) {
                 min={minBound}
                 max={maxBound}
                 onChange={(values) => {
+                  setDragging(true)
                   setDraftRange([values[0], values[1]])
                 }}
                 onFinalChange={(values) => {
                   const next: [number, number] = [values[0], values[1]]
                   setDraftRange(next)
+                  setDragging(false)
                   commitRange(next)
                 }}
                 renderTrack={({ props, children }) => (
@@ -228,7 +231,7 @@ export function Filters({ value, priceCeiling, onChange }: Props) {
                           min: minBound,
                           max: maxBound,
                         }),
-                        transition: 'background 180ms ease-out',
+                        // Sin transition de fondo: anima el track y “se sale” del dedo.
                       }}
                     >
                       {children}
@@ -237,18 +240,19 @@ export function Filters({ value, priceCeiling, onChange }: Props) {
                 )}
                 renderThumb={({ props, isDragged }) => {
                   const { key, ...thumbProps } = props
+                  const active = isDragged || dragging
                   return (
                     <div
                       key={key}
                       {...thumbProps}
                       className={`border-brand-700 size-5 rounded-full border-2 bg-white shadow-md outline-none ring-brand-600 focus-visible:ring-2 ${
-                        isDragged ? 'scale-110' : 'scale-100'
+                        active ? 'scale-110' : ''
                       }`}
                       style={{
                         ...thumbProps.style,
-                        transition: isDragged
-                          ? 'none'
-                          : 'transform 180ms ease-out, box-shadow 180ms ease-out',
+                        // Nunca animar left/transform: react-range posiciona el thumb
+                        // con eso; una transition hace que se desfase del cursor.
+                        transition: 'none',
                       }}
                     />
                   )

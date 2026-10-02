@@ -10,6 +10,7 @@ import { Spinner } from '@/components/States'
 import { Header } from '@/layout/Header'
 import { Footer } from '@/layout/Footer'
 import { CartBadge } from '@/layout/CartBadge'
+import { WhatsAppFloatingButton } from '@/layout/WhatsAppFloatingButton'
 import { AdminLayout } from '@/layout/AdminLayout'
 import { ScrollToTop } from '@/layout/ScrollToTop'
 import { LenisProvider } from '@/animation/LenisProvider'
@@ -131,6 +132,8 @@ function PublicShell() {
 
           <Footer />
         </div>
+
+        <WhatsAppFloatingButton />
       </LenisProvider>
     </CartProvider>
   )
