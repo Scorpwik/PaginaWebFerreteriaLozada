@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, ButtonLink } from '@/components/Button'
 import { useCart } from './CartProvider'
-import { MAX_QUANTITY, MIN_QUANTITY, normalizeQuantity } from './cart'
+import { MAX_QUANTITY, normalizeQuantity } from './cart'
+import { QuantityField } from './QuantityField'
 import { canAddToCart } from '@/lib/domain'
 import { formatMoney, variantLabel } from '@/lib/format'
 import { pickPrimaryImage } from '@/lib/domain'
@@ -16,7 +17,7 @@ export function AddToCart({
   variant: Variant
 }) {
   const { add } = useCart()
-  const [quantity, setQuantity] = useState('1')
+  const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
   const isDesktop = useIsDesktop()
@@ -24,7 +25,7 @@ export function AddToCart({
 
   // Cambiar de variante reinicia la cantidad y el aviso.
   useEffect(() => {
-    setQuantity('1')
+    setQuantity(1)
     setAdded(false)
   }, [variant.id])
 
@@ -53,14 +54,7 @@ export function AddToCart({
 
   if (!canAddToCart(variant)) return null
 
-  const parsed = Number(quantity.replace(',', '.'))
-  const valid = Number.isFinite(parsed) && parsed >= MIN_QUANTITY
-  const effective = valid ? normalizeQuantity(parsed) : 1
-
-  const step = (delta: number) => {
-    const next = normalizeQuantity((valid ? effective : 1) + delta)
-    setQuantity(String(next))
-  }
+  const effective = normalizeQuantity(quantity)
 
   const submit = () => {
     add({
@@ -103,48 +97,29 @@ export function AddToCart({
               ) : null}
             </label>
 
-            <div className="border-ink-200 flex w-fit items-stretch overflow-hidden rounded-lg border-2 bg-white">
-              <button
-                type="button"
-                onClick={() => step(-1)}
-                className="text-ink-700 hover:bg-ink-50 px-4 text-lg font-bold"
-                aria-label="Quitar uno"
-              >
-                −
-              </button>
-              <input
-                id="cantidad"
-                type="text"
-                inputMode="decimal"
-                value={quantity}
-                onChange={(event) => setQuantity(event.target.value)}
-                onBlur={() => setQuantity(String(effective))}
-                aria-describedby="cantidad-ayuda"
-                className="border-ink-200 w-20 border-x-2 py-3 text-center font-bold focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => step(1)}
-                className="text-ink-700 hover:bg-ink-50 px-4 text-lg font-bold"
-                aria-label="Añadir uno"
-              >
-                +
-              </button>
-            </div>
+            <QuantityField
+              id="cantidad"
+              value={quantity}
+              onChange={setQuantity}
+              aria-describedby="cantidad-ayuda"
+            />
           </div>
 
           <div className="flex-1">
             <p className="text-ink-500 text-xs font-semibold uppercase tracking-wide">
               Subtotal
             </p>
-            <p key={`${variant.id}-${effective}`} className="price-swap text-ink-900 text-xl font-extrabold">
+            <p
+              key={`${variant.id}-${effective}`}
+              className="price-swap text-ink-900 text-xl font-extrabold"
+            >
               {formatMoney(variant.price * effective)}
             </p>
           </div>
         </div>
 
         <p id="cantidad-ayuda" className="text-ink-500 mt-2 text-xs">
-          Puedes usar decimales (por ejemplo 2,5). Máximo{' '}
+          Solo números enteros. Mínimo 1 · Máximo{' '}
           {MAX_QUANTITY.toLocaleString('es-EC')}.
         </p>
 

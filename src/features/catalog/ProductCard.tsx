@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { AvailabilityBadge } from '@/components/AvailabilityBadge'
 import { ProductImage } from '@/components/ProductImage'
+import { catalogAvailabilityBadge } from '@/lib/domain'
 import { formatPrice } from '@/lib/format'
 import { productPath } from '@/lib/routes'
 import type { ProductCard as ProductCardData } from '@/lib/domain'
@@ -39,6 +40,8 @@ export function ProductCard({
   product: ProductCardData
   eager?: boolean
 }) {
+  const badge = catalogAvailabilityBadge(product.variants)
+
   return (
     <article
       data-reveal
@@ -75,7 +78,12 @@ export function ProductCard({
 
         <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
           <PriceLabel product={product} />
-          <AvailabilityBadge availability={product.availability} />
+          {badge ? (
+            <AvailabilityBadge
+              availability={badge.availability}
+              label={badge.label}
+            />
+          ) : null}
         </div>
 
         {product.variantCount > 1 ? (

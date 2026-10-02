@@ -51,6 +51,12 @@ export type Category = {
 
 export type CategoryNode = Category & { children: CategoryNode[] }
 
+/** Variante reducida para badges de disponibilidad en el catalogo. */
+export type CardVariantAvailability = {
+  label: string
+  availability: Availability
+}
+
 /** Lo minimo que la tarjeta del catalogo necesita para pintarse. */
 export type ProductCard = {
   id: string
@@ -62,6 +68,8 @@ export type ProductCard = {
   priceFrom: number | null
   priceTo: number | null
   availability: Availability
+  /** Detalle por variante para badges especificos ("Agotado: 6x2"). */
+  variants: CardVariantAvailability[]
   variantCount: number
   isOffer: boolean
   isBestseller: boolean
@@ -102,6 +110,50 @@ export function aggregateAvailability(
   if (variants.some((v) => v.availability === 'disponible')) return 'disponible'
   if (variants.some((v) => v.availability === 'consultar')) return 'consultar'
   return 'agotado'
+}
+
+/**
+ * Badge de la tarjeta: no se muestra si todo está disponible.
+ * Si solo algunas variantes fallan, nombra esas medidas (nunca implica
+ * que toda la familia está agotada).
+ */
+export function catalogAvailabilityBadge(
+  variants: CardVariantAvailability[],
+): { availability: Availability; label: string } | null {
+  if (variants.length === 0) return null
+
+  const all = (status: Availability) =>
+    variants.every((variant) => variant.availability === status)
+
+  if (all('disponible')) return null
+  if (all('agotado')) return { availability: 'agotado', label: 'Agotado' }
+  if (all('consultar')) {
+    return { availability: 'consultar', label: 'Consultar precio' }
+  }
+
+  const labelsFor = (status: Availability) =>
+    variants
+      .filter((variant) => variant.availability === status)
+      .map((variant) => variant.label)
+      .filter(Boolean)
+
+  const agotados = labelsFor('agotado')
+  if (agotados.length > 0) {
+    return {
+      availability: 'agotado',
+      label: `Agotado: ${agotados.join(', ')}`,
+    }
+  }
+
+  const consultar = labelsFor('consultar')
+  if (consultar.length > 0) {
+    return {
+      availability: 'consultar',
+      label: `Consultar: ${consultar.join(', ')}`,
+    }
+  }
+
+  return null
 }
 
 /**

@@ -377,6 +377,8 @@ export type Database = {
           p_availability?: string | null
           p_only_offers?: boolean
           p_only_bestsellers?: boolean
+          p_price_min?: number | null
+          p_price_max?: number | null
           p_limit?: number
           p_offset?: number
         }

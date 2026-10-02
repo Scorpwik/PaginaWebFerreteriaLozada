@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
 import { useReducedMotion } from '@/animation/useReducedMotion'
 import { PhotoLightbox } from './PhotoLightbox'
 import type { AboutGalleryItem } from '@/data/settings'
@@ -11,38 +12,114 @@ type Props = {
 
 /**
  * Cinta horizontal de fotos del local.
- * Solo las fotos que hay; clic/toque abre el visor. Sin texto "Ver foto" ni
- * barra de scroll visible.
+ * Loop infinito real: dos copias del set; GSAP desplaza hasta -width del
+ * primer set y reinicia a 0 sin transición (copias idénticas → sin salto).
  */
 export function AboutPhotoCarousel({ photos, compact = false }: Props) {
   const reducedMotion = useReducedMotion()
   const scrollerRef = useRef<HTMLDivElement>(null)
-  const trackRef = useRef<HTMLUListElement>(null)
+  const trackRef = useRef<HTMLDivElement>(null)
+  const firstSetRef = useRef<HTMLUListElement>(null)
+  const tweenRef = useRef<gsap.core.Tween | null>(null)
   const [overflows, setOverflows] = useState(false)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
+  const lightboxOpen = openIndex !== null
+  const autoPlay =
+    !reducedMotion && !lightboxOpen && overflows && photos.length >= 2
+
   useEffect(() => {
     const scroller = scrollerRef.current
-    const track = trackRef.current
-    if (!scroller || !track) return
+    const firstSet = firstSetRef.current
+    if (!scroller || !firstSet || photos.length === 0) return
 
     const measure = () => {
-      setOverflows(track.scrollWidth > scroller.clientWidth + 8)
+      setOverflows(firstSet.scrollWidth > scroller.clientWidth + 8)
     }
 
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(scroller)
-    observer.observe(track)
+    observer.observe(firstSet)
     return () => observer.disconnect()
   }, [photos])
 
+  useEffect(() => {
+    const track = trackRef.current
+    const firstSet = firstSetRef.current
+    if (!track || !firstSet) return
+
+    tweenRef.current?.kill()
+    tweenRef.current = null
+    gsap.set(track, { x: 0 })
+
+    if (!autoPlay) return
+
+    const distance = firstSet.offsetWidth
+    if (distance <= 0) return
+
+    const duration = Math.max(18, photos.length * 6)
+
+    const tween = gsap.to(track, {
+      x: -distance,
+      duration,
+      ease: 'none',
+      repeat: -1,
+    })
+    tweenRef.current = tween
+
+    const pause = () => tween.pause()
+    const resume = () => tween.resume()
+    const scroller = scrollerRef.current
+    scroller?.addEventListener('pointerenter', pause)
+    scroller?.addEventListener('pointerleave', resume)
+    scroller?.addEventListener('focusin', pause)
+    scroller?.addEventListener('focusout', resume)
+
+    return () => {
+      tween.kill()
+      tweenRef.current = null
+      scroller?.removeEventListener('pointerenter', pause)
+      scroller?.removeEventListener('pointerleave', resume)
+      scroller?.removeEventListener('focusin', pause)
+      scroller?.removeEventListener('focusout', resume)
+      gsap.set(track, { x: 0 })
+    }
+  }, [autoPlay, photos])
+
   if (photos.length === 0) return null
 
-  const lightboxOpen = openIndex !== null
-  const autoPlay =
-    !reducedMotion && !lightboxOpen && overflows && photos.length >= 3
-  const loopPhotos = autoPlay ? [...photos, ...photos] : photos
+  const itemClass = compact
+    ? 'w-[min(70vw,16rem)] shrink-0'
+    : 'w-[min(78vw,20rem)] shrink-0 sm:w-[22rem]'
+
+  const renderSet = (clone: boolean) =>
+    photos.map((photo, index) => (
+      <li
+        key={`${clone ? 'clone' : 'orig'}-${photo.url}-${index}`}
+        className={itemClass}
+        aria-hidden={clone || undefined}
+      >
+        <button
+          type="button"
+          onClick={() => setOpenIndex(index)}
+          className="border-ink-100 group focus-visible:ring-brand-600 block w-full overflow-hidden rounded-card border bg-ink-50 focus-visible:ring-2 focus-visible:outline-none"
+          aria-label={clone ? undefined : `Abrir foto: ${photo.alt}`}
+          tabIndex={clone ? -1 : 0}
+        >
+          <div className="aspect-[16/10] overflow-hidden">
+            <img
+              src={photo.url}
+              alt=""
+              loading={!clone && index < 2 ? 'eager' : 'lazy'}
+              decoding="async"
+              draggable={false}
+              className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+          </div>
+        </button>
+      </li>
+    ))
 
   return (
     <section aria-labelledby="galeria-local" className="min-w-0">
@@ -60,65 +137,25 @@ export function AboutPhotoCarousel({ photos, compact = false }: Props) {
 
       <div
         ref={scrollerRef}
-        className={`overflow-x-auto pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-          autoPlay ? 'group/carousel' : ''
-        }`}
+        className={
+          autoPlay
+            ? 'overflow-hidden pb-0'
+            : 'overflow-x-auto pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+        }
         role="region"
         aria-label="Fotos del local. Toca o haz clic para ampliar."
         aria-roledescription="carrusel"
       >
-        <ul
-          ref={trackRef}
-          className={`flex w-max gap-3 ${
-            autoPlay
-              ? 'about-marquee group-hover/carousel:[animation-play-state:paused] group-focus-within/carousel:[animation-play-state:paused]'
-              : ''
-          }`}
-          style={
-            autoPlay
-              ? {
-                  animationDuration: `${Math.max(18, photos.length * 6)}s`,
-                }
-              : undefined
-          }
-        >
-          {loopPhotos.map((photo, index) => {
-            const realIndex = index % photos.length
-            const isClone = autoPlay && index >= photos.length
-            return (
-              <li
-                key={`${photo.url}-${index}`}
-                className={
-                  compact
-                    ? 'w-[min(70vw,16rem)] shrink-0'
-                    : 'w-[min(78vw,20rem)] shrink-0 sm:w-[22rem]'
-                }
-                aria-hidden={isClone || undefined}
-              >
-                <button
-                  type="button"
-                  onClick={() => setOpenIndex(realIndex)}
-                  className="border-ink-100 group focus-visible:ring-brand-600 block w-full overflow-hidden rounded-card border bg-ink-50 focus-visible:ring-2 focus-visible:outline-none"
-                  aria-label={
-                    isClone ? undefined : `Abrir foto: ${photo.alt}`
-                  }
-                  tabIndex={isClone ? -1 : 0}
-                >
-                  <div className="aspect-[16/10] overflow-hidden">
-                    <img
-                      src={photo.url}
-                      alt=""
-                      loading={index < 2 ? 'eager' : 'lazy'}
-                      decoding="async"
-                      draggable={false}
-                      className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    />
-                  </div>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+        <div ref={trackRef} className="flex w-max will-change-transform">
+          <ul ref={firstSetRef} className="flex gap-3 pr-3">
+            {renderSet(false)}
+          </ul>
+          {autoPlay ? (
+            <ul className="flex gap-3 pr-3" aria-hidden="true">
+              {renderSet(true)}
+            </ul>
+          ) : null}
+        </div>
       </div>
 
       {lightboxOpen ? (

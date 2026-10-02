@@ -21,17 +21,20 @@ const styles: Record<Availability, { label: string; className: string }> = {
 
 export function AvailabilityBadge({
   availability,
+  label,
   className = '',
 }: {
   availability: Availability
+  /** Texto propio (ej. "Agotado: 6x2"). Por defecto usa la etiqueta del estado. */
+  label?: string
   className?: string
 }) {
   const style = styles[availability]
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${style.className} ${className}`}
+      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${style.className} ${className}`}
     >
-      {style.label}
+      <span className="truncate">{label ?? style.label}</span>
     </span>
   )
 }

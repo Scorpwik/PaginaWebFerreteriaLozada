@@ -34,16 +34,17 @@ export const clientNameSchema = z
   .refine((v) => v.length >= 3, 'Escribe tu nombre (al menos 3 letras).')
   .refine((v) => /\p{L}/u.test(v), 'El nombre debe contener al menos una letra.')
 
-/** La cantidad admite decimales porque hay unidades como metros o quintales. */
+/** Enteros positivos por ahora; fracciones (metro/litro) se pueden reabrir luego. */
 export const quantitySchema = z.coerce
   .number()
   .refine(Number.isFinite, 'Cantidad invalida.')
-  .refine((v) => v > 0, 'La cantidad debe ser mayor a cero.')
+  .refine((v) => Number.isInteger(v), 'La cantidad debe ser un numero entero.')
+  .refine((v) => v >= 1, 'La cantidad minima es 1.')
   .refine(
     (v) => v <= 100000,
     'Cantidad demasiado alta. Escribenos por WhatsApp.',
   )
-  .transform((v) => Math.round(v * 100) / 100)
+  .transform((v) => Math.round(v))
 
 export const quoteItemSchema = z.object({
   variant_id: z.uuid('Identificador de variante invalido.'),

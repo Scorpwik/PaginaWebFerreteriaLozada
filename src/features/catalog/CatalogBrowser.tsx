@@ -1,21 +1,24 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ProductGrid } from './ProductGrid'
 import { SearchBar } from './SearchBar'
+import { Filters } from './Filters'
 import { Pagination } from '@/components/Pagination'
 import { EmptyState, ErrorState } from '@/components/States'
 import { ButtonLink } from '@/components/Button'
-import { fetchCatalogPage, PAGE_SIZE } from '@/data/products'
+import {
+  fetchCatalogPage,
+  fetchCatalogPriceCeiling,
+  PAGE_SIZE,
+} from '@/data/products'
 import { useAsync } from '@/lib/useAsync'
 import { isAvailability } from '@/lib/format'
-import type { Availability } from '@/lib/domain'
 
-const availabilityOptions: { value: Availability | ''; label: string }[] = [
-  { value: '', label: 'Todos' },
-  { value: 'disponible', label: 'Disponibles' },
-  { value: 'consultar', label: 'A consultar' },
-  { value: 'agotado', label: 'Agotados' },
-]
+function parsePriceParam(raw: string | null): number | null {
+  if (raw == null || raw === '') return null
+  const value = Number(raw)
+  return Number.isFinite(value) && value >= 0 ? value : null
+}
 
 /**
  * Listado paginado reutilizado por /catalogo y por las paginas de categoria.
@@ -28,6 +31,7 @@ export function CatalogBrowser({
   categoryIds?: string[] | null
 }) {
   const [params, setParams] = useSearchParams()
+  const [priceCeiling, setPriceCeiling] = useState(100)
 
   const search = params.get('q') ?? ''
   const availabilityParam = params.get('disp') ?? ''
@@ -36,9 +40,25 @@ export function CatalogBrowser({
     : null
   const onlyOffers = params.get('oferta') === '1'
   const onlyBestsellers = params.get('mas-vendidos') === '1'
+  const priceMin = parsePriceParam(params.get('pmin'))
+  const priceMax = parsePriceParam(params.get('pmax'))
   const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
 
   const categoryKey = categoryIds?.join(',') ?? ''
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchCatalogPriceCeiling()
+      .then((ceiling) => {
+        if (!cancelled) setPriceCeiling(ceiling)
+      })
+      .catch(() => {
+        /* fallback local ya esta en state */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const { data, loading, error, reload } = useAsync(
     () =>
@@ -48,10 +68,21 @@ export function CatalogBrowser({
         availability,
         onlyOffers,
         onlyBestsellers,
+        priceMin,
+        priceMax,
         page,
         pageSize: PAGE_SIZE,
       }),
-    [search, categoryKey, availability, onlyOffers, onlyBestsellers, page],
+    [
+      search,
+      categoryKey,
+      availability,
+      onlyOffers,
+      onlyBestsellers,
+      priceMin,
+      priceMax,
+      page,
+    ],
   )
 
   const update = useCallback(
@@ -81,54 +112,50 @@ export function CatalogBrowser({
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label
-            htmlFor="filtro-disponibilidad"
-            className="text-ink-600 text-sm font-semibold"
-          >
-            Mostrar
-          </label>
-          <select
-            id="filtro-disponibilidad"
-            value={availability ?? ''}
-            onChange={(event) => update({ disp: event.target.value })}
-            className="border-ink-200 focus:border-brand-600 rounded-lg border-2 bg-white px-3 py-2 text-sm font-semibold focus:outline-none"
-          >
-            {availabilityOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Filters
+          priceCeiling={priceCeiling}
+          value={{ availability, priceMin, priceMax }}
+          onChange={(next) =>
+            update({
+              disp: next.availability,
+              pmin: next.priceMin != null ? String(next.priceMin) : null,
+              pmax: next.priceMax != null ? String(next.priceMax) : null,
+            })
+          }
+        />
 
-        <label className="border-ink-200 flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={onlyOffers}
-            onChange={(event) =>
-              update({ oferta: event.target.checked ? '1' : null })
-            }
-            className="accent-brand-600 size-4"
-          />
+        <button
+          type="button"
+          onClick={() => update({ oferta: onlyOffers ? null : '1' })}
+          aria-pressed={onlyOffers}
+          className={`rounded-full border-2 px-3 py-2 text-sm font-semibold transition-colors ${
+            onlyOffers
+              ? 'border-brand-600 bg-brand-50 text-brand-800'
+              : 'border-ink-200 bg-white text-ink-800 hover:border-ink-300'
+          }`}
+        >
           Solo ofertas
-        </label>
+        </button>
 
-        <label className="border-ink-200 flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold">
-          <input
-            type="checkbox"
-            checked={onlyBestsellers}
-            onChange={(event) =>
-              update({ 'mas-vendidos': event.target.checked ? '1' : null })
-            }
-            className="accent-brand-600 size-4"
-          />
+        <button
+          type="button"
+          onClick={() =>
+            update({ 'mas-vendidos': onlyBestsellers ? null : '1' })
+          }
+          aria-pressed={onlyBestsellers}
+          className={`rounded-full border-2 px-3 py-2 text-sm font-semibold transition-colors ${
+            onlyBestsellers
+              ? 'border-brand-600 bg-brand-50 text-brand-800'
+              : 'border-ink-200 bg-white text-ink-800 hover:border-ink-300'
+          }`}
+        >
           Solo más vendidos
-        </label>
+        </button>
 
         {search ? (
           <p className="text-ink-600 text-sm">
-            Resultados para <span className="text-ink-900 font-semibold">“{search}”</span>
+            Resultados para{' '}
+            <span className="text-ink-900 font-semibold">“{search}”</span>
           </p>
         ) : null}
 

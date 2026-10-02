@@ -26,7 +26,7 @@ const CARD_SELECT = `
   is_offer,
   is_bestseller,
   category:categories!products_category_id_fkey ( id, name, slug ),
-  product_variants ( id, price, availability ),
+  product_variants ( id, price, availability, size, color, presentation, sale_unit ),
   product_images ( id, url, is_primary, sort_order, variant_id )
 ` as const
 
@@ -37,7 +37,15 @@ type CardRow = {
   is_offer: boolean
   is_bestseller: boolean
   category: { id: string; name: string; slug: string } | null
-  product_variants: { id: string; price: number; availability: string }[]
+  product_variants: {
+    id: string
+    price: number
+    availability: string
+    size: string | null
+    color: string | null
+    presentation: string | null
+    sale_unit: string | null
+  }[]
   product_images: {
     id: string
     url: string
@@ -47,10 +55,20 @@ type CardRow = {
   }[]
 }
 
+function variantCardLabel(variant: CardRow['product_variants'][number]): string {
+  const parts = [variant.size, variant.color, variant.presentation].filter(
+    (part): part is string => Boolean(part && part.trim()),
+  )
+  if (parts.length > 0) return parts.join(' / ')
+  if (variant.sale_unit?.trim()) return variant.sale_unit.trim()
+  return 'opción'
+}
+
 function toCard(row: CardRow): ProductCard {
   const variants = row.product_variants.map((variant) => ({
     price: Number(variant.price ?? 0),
     availability: normalizeAvailability(variant.availability),
+    label: variantCardLabel(variant),
   }))
   const { from, to } = priceRange(variants)
   const images: ProductImage[] = row.product_images.map((image) => ({
@@ -71,6 +89,10 @@ function toCard(row: CardRow): ProductCard {
     priceFrom: from,
     priceTo: to,
     availability: aggregateAvailability(variants),
+    variants: variants.map(({ label, availability }) => ({
+      label,
+      availability,
+    })),
     variantCount: row.product_variants.length,
     isOffer: row.is_offer,
     isBestseller: row.is_bestseller,
@@ -89,8 +111,26 @@ export type CatalogQuery = {
   availability?: Availability | null
   onlyOffers?: boolean
   onlyBestsellers?: boolean
+  priceMin?: number | null
+  priceMax?: number | null
   page?: number
   pageSize?: number
+}
+
+/** Techo del slider de precio: maximo real entre variantes con precio. */
+export async function fetchCatalogPriceCeiling(): Promise<number> {
+  const { data, error } = await supabase
+    .from('product_variants')
+    .select('price')
+    .neq('availability', 'consultar')
+    .gt('price', 0)
+    .order('price', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  const max = Number(data?.price ?? 0)
+  return Number.isFinite(max) && max > 0 ? Math.ceil(max) : 100
 }
 
 /**
@@ -112,6 +152,14 @@ export async function fetchCatalogPage(
       p_availability: query.availability ?? undefined,
       p_only_offers: query.onlyOffers ?? false,
       p_only_bestsellers: query.onlyBestsellers ?? false,
+      p_price_min:
+        query.priceMin != null && Number.isFinite(query.priceMin)
+          ? query.priceMin
+          : undefined,
+      p_price_max:
+        query.priceMax != null && Number.isFinite(query.priceMax)
+          ? query.priceMax
+          : undefined,
       p_limit: pageSize,
       p_offset: offset,
     },

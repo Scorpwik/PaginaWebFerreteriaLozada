@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { ProductImage } from '@/components/ProductImage'
 import { Spinner } from '@/components/States'
 import { useCart } from './CartProvider'
-import { lineSubtotal, normalizeQuantity } from './cart'
+import { lineSubtotal } from './cart'
 import type { CartLine } from './cart'
+import { QuantityField } from './QuantityField'
 import { fetchProductById } from '@/data/products'
 import { canAddToCart, pickPrimaryImage } from '@/lib/domain'
 import { formatMoney, formatPrice, variantLabel } from '@/lib/format'
@@ -97,37 +98,13 @@ export function CartLineRow({ line }: { line: CartLine }) {
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="border-ink-200 flex items-stretch overflow-hidden rounded-lg border">
-            <button
-              type="button"
-              onClick={() => update(line.variantId, line.quantity - 1)}
-              className="text-ink-700 hover:bg-ink-50 px-3 font-bold"
-              aria-label={`Quitar uno de ${line.productName}`}
-            >
-              −
-            </button>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={line.quantity}
-              onChange={(event) => {
-                const next = Number(event.target.value.replace(',', '.'))
-                if (Number.isFinite(next)) {
-                  update(line.variantId, normalizeQuantity(next))
-                }
-              }}
-              aria-label={`Cantidad de ${line.productName}`}
-              className="border-ink-200 w-16 border-x py-2 text-center text-sm font-bold focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => update(line.variantId, line.quantity + 1)}
-              className="text-ink-700 hover:bg-ink-50 px-3 font-bold"
-              aria-label={`Añadir uno de ${line.productName}`}
-            >
-              +
-            </button>
-          </div>
+          <QuantityField
+            value={line.quantity}
+            onChange={(next) => update(line.variantId, next)}
+            aria-label={`Cantidad de ${line.productName}`}
+            className="border"
+            inputClassName="sm:w-16 sm:py-2 sm:text-sm"
+          />
 
           <button
             type="button"

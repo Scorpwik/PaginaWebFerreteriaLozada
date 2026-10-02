@@ -39,9 +39,9 @@ const payloadSchema = z.object({
         variant_id: z.uuid(),
         quantity: z
           .number()
+          .int()
           .positive()
-          .max(100000)
-          .transform((v) => Math.round(v * 100) / 100),
+          .max(100000),
       }),
     )
     .min(1, 'El carrito esta vacio.')

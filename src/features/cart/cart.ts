@@ -20,12 +20,17 @@ export type Cart = { lines: CartLine[] }
 
 export const emptyCart: Cart = { lines: [] }
 
-export const MIN_QUANTITY = 0.01
+export const MIN_QUANTITY = 1
 export const MAX_QUANTITY = 100000
+
+/** Solo dígitos mientras se escribe; enteros positivos, mínimo 1. */
+export function sanitizeQuantityDigits(raw: string): string {
+  return raw.replace(/[^0-9]/g, '')
+}
 
 export function normalizeQuantity(value: number): number {
   if (!Number.isFinite(value)) return MIN_QUANTITY
-  const rounded = Math.round(value * 100) / 100
+  const rounded = Math.round(value)
   return Math.min(Math.max(rounded, MIN_QUANTITY), MAX_QUANTITY)
 }
 
