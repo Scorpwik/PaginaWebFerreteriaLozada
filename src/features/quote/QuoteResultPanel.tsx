@@ -153,9 +153,8 @@ export function QuoteResultPanel({ result }: { result: QuoteResult }) {
             Todo se coordina por WhatsApp
           </p>
           <p className="mt-1.5">
-            Esta cotización es referencial. El pago, la entrega — incluyendo
-            envíos a otras provincias — y cualquier coordinación especial se
-            acuerdan directamente por WhatsApp con Ferretería Lozada.
+            Esta cotización es referencial. El pago y la entrega a domicilio o
+            provincia se coordinan por WhatsApp con Ferretería Lozada.
           </p>
         </div>
 

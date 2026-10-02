@@ -340,8 +340,8 @@ export async function buildQuotePdf(input: QuotePdfInput): Promise<Uint8Array> {
   y -= 46
   const notes = [
     `Cotizacion referencial con vigencia de ${input.validityDays} dias.`,
-    'Pago, entrega (incl. envios a otras provincias) y coordinacion especial: por WhatsApp.',
     'Los precios pueden variar segun disponibilidad y no incluyen transporte.',
+    'El pago y la entrega a domicilio o provincia se coordinan por WhatsApp.',
     'Para confirmar tu pedido escribenos por WhatsApp al numero de arriba.',
   ]
   for (const note of notes) {

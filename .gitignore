@@ -20,6 +20,8 @@ yarn-error.log*
 
 supabase/.temp
 supabase/.branches
+supabase/.deploy-create-quote.json
+supabase/.mcp-deploy-payload.json
 
 # Build cache local de TypeScript (no se sube al repo)
 tsconfig.tsbuildinfo
